@@ -30,7 +30,6 @@
         {
             components = new System.ComponentModel.Container();
             button1 = new Button();
-            listBox1 = new ListBox();
             listBox2 = new ListBox();
             textBox1 = new TextBox();
             button2 = new Button();
@@ -38,6 +37,7 @@
             contextMenuStrip1 = new ContextMenuStrip(components);
             editToolStripMenuItem = new ToolStripMenuItem();
             addEmptyLineToolStripMenuItem = new ToolStripMenuItem();
+            pickColorToolStripMenuItem = new ToolStripMenuItem();
             addDescriptionToolStripMenuItem = new ToolStripMenuItem();
             toolStripMenuItem2 = new ToolStripSeparator();
             copyToolStripMenuItem = new ToolStripMenuItem();
@@ -52,8 +52,11 @@
             checkBox2 = new CheckBox();
             checkBox3 = new CheckBox();
             groupBox1 = new GroupBox();
+            dataGridView1 = new DataGridView();
+            checkBox4 = new CheckBox();
             contextMenuStrip1.SuspendLayout();
             groupBox1.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)dataGridView1).BeginInit();
             SuspendLayout();
             // 
             // button1
@@ -66,41 +69,23 @@
             button1.UseVisualStyleBackColor = true;
             button1.Click += button1_Click;
             // 
-            // listBox1
-            // 
-            listBox1.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
-            listBox1.Font = new Font("Fira Code Retina", 9.75F, FontStyle.Bold, GraphicsUnit.Point, 0);
-            listBox1.FormattingEnabled = true;
-            listBox1.HorizontalScrollbar = true;
-            listBox1.Location = new Point(12, 48);
-            listBox1.Name = "listBox1";
-            listBox1.SelectionMode = SelectionMode.MultiExtended;
-            listBox1.Size = new Size(1219, 436);
-            listBox1.TabIndex = 2;
-            listBox1.Click += listBox1_Click;
-            listBox1.SelectedIndexChanged += listBox1_SelectedIndexChanged;
-            listBox1.DoubleClick += listBox1_DoubleClick;
-            listBox1.MouseDown += listBox1_MouseDown;
-            listBox1.MouseUp += listBox1_MouseUp;
-            // 
             // listBox2
             // 
             listBox2.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left;
             listBox2.FormattingEnabled = true;
             listBox2.ItemHeight = 15;
-            listBox2.Location = new Point(144, -3);
+            listBox2.Location = new Point(512, 6);
             listBox2.Name = "listBox2";
-            listBox2.Size = new Size(75, 439);
+            listBox2.Size = new Size(75, 34);
             listBox2.TabIndex = 3;
             listBox2.Visible = false;
-            listBox2.Click += listBox2_Click;
             listBox2.SelectedIndexChanged += listBox2_SelectedIndexChanged;
             // 
             // textBox1
             // 
-            textBox1.Location = new Point(93, 19);
+            textBox1.Location = new Point(182, 19);
             textBox1.Name = "textBox1";
-            textBox1.Size = new Size(249, 23);
+            textBox1.Size = new Size(160, 23);
             textBox1.TabIndex = 4;
             textBox1.KeyDown += textBox1_KeyDown;
             textBox1.MouseDown += textBox1_MouseDown;
@@ -127,9 +112,9 @@
             // 
             // contextMenuStrip1
             // 
-            contextMenuStrip1.Items.AddRange(new ToolStripItem[] { editToolStripMenuItem, addEmptyLineToolStripMenuItem, addDescriptionToolStripMenuItem, toolStripMenuItem2, copyToolStripMenuItem, pasteToolStripMenuItem, cutToolStripMenuItem, toolStripMenuItem1, exportToolStripMenuItem, toolStripMenuItem3, followGotoToolStripMenuItem });
+            contextMenuStrip1.Items.AddRange(new ToolStripItem[] { editToolStripMenuItem, addEmptyLineToolStripMenuItem, pickColorToolStripMenuItem, addDescriptionToolStripMenuItem, toolStripMenuItem2, copyToolStripMenuItem, pasteToolStripMenuItem, cutToolStripMenuItem, toolStripMenuItem1, exportToolStripMenuItem, toolStripMenuItem3, followGotoToolStripMenuItem });
             contextMenuStrip1.Name = "contextMenuStrip1";
-            contextMenuStrip1.Size = new Size(160, 198);
+            contextMenuStrip1.Size = new Size(160, 220);
             contextMenuStrip1.Opening += contextMenuStrip1_Opening;
             // 
             // editToolStripMenuItem
@@ -138,6 +123,7 @@
             editToolStripMenuItem.Size = new Size(159, 22);
             editToolStripMenuItem.Tag = "1";
             editToolStripMenuItem.Text = "Edit";
+            editToolStripMenuItem.Visible = false;
             editToolStripMenuItem.Click += GeneralMenuItem_Click;
             // 
             // addEmptyLineToolStripMenuItem
@@ -147,6 +133,14 @@
             addEmptyLineToolStripMenuItem.Tag = "2";
             addEmptyLineToolStripMenuItem.Text = "Add Empty Line";
             addEmptyLineToolStripMenuItem.Click += GeneralMenuItem_Click;
+            // 
+            // pickColorToolStripMenuItem
+            // 
+            pickColorToolStripMenuItem.Name = "pickColorToolStripMenuItem";
+            pickColorToolStripMenuItem.Size = new Size(159, 22);
+            pickColorToolStripMenuItem.Tag = "10";
+            pickColorToolStripMenuItem.Text = "Change Color";
+            pickColorToolStripMenuItem.Click += GeneralMenuItem_Click;
             // 
             // addDescriptionToolStripMenuItem
             // 
@@ -210,6 +204,7 @@
             followGotoToolStripMenuItem.Size = new Size(159, 22);
             followGotoToolStripMenuItem.Tag = "8";
             followGotoToolStripMenuItem.Text = "Follow Goto...";
+            followGotoToolStripMenuItem.Visible = false;
             followGotoToolStripMenuItem.Click += GeneralMenuItem_Click;
             // 
             // label1
@@ -235,16 +230,21 @@
             // checkBox2
             // 
             checkBox2.AutoSize = true;
+            checkBox2.Checked = true;
+            checkBox2.CheckState = CheckState.Checked;
             checkBox2.Location = new Point(113, 18);
             checkBox2.Name = "checkBox2";
             checkBox2.Size = new Size(136, 19);
             checkBox2.TabIndex = 9;
             checkBox2.Text = "Remove (->pointers)";
-            checkBox2.UseVisualStyleBackColor = true;
+            checkBox2.UseVisualStyleBackColor = false;
+            checkBox2.Visible = false;
             // 
             // checkBox3
             // 
             checkBox3.AutoSize = true;
+            checkBox3.Checked = true;
+            checkBox3.CheckState = CheckState.Checked;
             checkBox3.Location = new Point(14, 18);
             checkBox3.Name = "checkBox3";
             checkBox3.Size = new Size(93, 19);
@@ -264,24 +264,48 @@
             groupBox1.TabIndex = 11;
             groupBox1.TabStop = false;
             // 
+            // dataGridView1
+            // 
+            dataGridView1.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
+            dataGridView1.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
+            dataGridView1.Location = new Point(12, 48);
+            dataGridView1.Name = "dataGridView1";
+            dataGridView1.Size = new Size(1219, 439);
+            dataGridView1.TabIndex = 13;
+            dataGridView1.MouseClick += dataGridView1_MouseClick;
+            // 
+            // checkBox4
+            // 
+            checkBox4.AutoSize = true;
+            checkBox4.Checked = true;
+            checkBox4.CheckState = CheckState.Checked;
+            checkBox4.Location = new Point(93, 22);
+            checkBox4.Name = "checkBox4";
+            checkBox4.Size = new Size(81, 19);
+            checkBox4.TabIndex = 14;
+            checkBox4.Text = "AutoColor";
+            checkBox4.UseVisualStyleBackColor = true;
+            // 
             // Form1
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(1243, 499);
+            Controls.Add(checkBox4);
+            Controls.Add(dataGridView1);
             Controls.Add(groupBox1);
             Controls.Add(label1);
             Controls.Add(checkBox1);
             Controls.Add(button2);
             Controls.Add(textBox1);
             Controls.Add(listBox2);
-            Controls.Add(listBox1);
             Controls.Add(button1);
             Name = "Form1";
             Text = "FlowGen";
             contextMenuStrip1.ResumeLayout(false);
             groupBox1.ResumeLayout(false);
             groupBox1.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)dataGridView1).EndInit();
             ResumeLayout(false);
             PerformLayout();
         }
@@ -289,7 +313,6 @@
         #endregion
 
         private Button button1;
-        private ListBox listBox1;
         private ListBox listBox2;
         private TextBox textBox1;
         private Button button2;
@@ -311,5 +334,8 @@
         private CheckBox checkBox2;
         private CheckBox checkBox3;
         private GroupBox groupBox1;
+        private DataGridView dataGridView1;
+        private ToolStripMenuItem pickColorToolStripMenuItem;
+        private CheckBox checkBox4;
     }
 }

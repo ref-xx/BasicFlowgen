@@ -1,20 +1,89 @@
-﻿using System.Text;
+﻿using System.Security.Cryptography.Xml;
+using System.Text;
 using System.Text.RegularExpressions;
 
 namespace FlowGen
 {
     public partial class Form1 : Form
     {
+        public enum ColumnKey
+        {
+            FlowMarker,     // akış işareti →, ⏹️, ↩ vb.
+            LineNumber,     // örn: 5060
+            Command,        // BASIC komutu gosub 500 gibi
+            IncomingRefs,   // bu satıra gelen GOTO/GOSUB referansları
+            FunctionName,   // varsa: “InitMap”, “GameLoop” gibi tanım
+            Comment         // el ile yazılmış yorumlar
+        }
+
+        private Dictionary<ColumnKey, int> ColumnMap;
+        private void InitGridColumns()
+        {
+            dataGridView1.Columns.Clear();
+            ColumnMap = new();
+
+            AddGridColumn(ColumnKey.FlowMarker, "", 40, false);
+            AddGridColumn(ColumnKey.LineNumber, "Line", 60, false);
+            AddGridColumn(ColumnKey.Command, "Command", 400, false);
+            AddGridColumn(ColumnKey.IncomingRefs, "← From", 300, false);
+            AddGridColumn(ColumnKey.FunctionName, "Function", 120, true);
+            AddGridColumn(ColumnKey.Comment, "Comment", 200, true);
+
+            dataGridView1.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
+            dataGridView1.MultiSelect = true;
+            dataGridView1.AllowUserToAddRows = false;
+            dataGridView1.AllowUserToDeleteRows = false;
+            dataGridView1.RowHeadersVisible = false;
+            dataGridView1.AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.AllCells;
+
+            Font monoFont = new Font("Fira Code Retina", 10, FontStyle.Bold);
+            dataGridView1.Columns[ColumnMap[ColumnKey.LineNumber]].DefaultCellStyle.Font = monoFont;
+            dataGridView1.Columns[ColumnMap[ColumnKey.Command]].DefaultCellStyle.Font = monoFont;
+            /*
+            var col = dataGridView1.Columns[ColumnMap[ColumnKey.IncomingRefs]];
+            col.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
+            col.FillWeight = 100; // Yüzde gibi davranır
+            */
+            dataGridView1.Columns[ColumnMap[ColumnKey.Comment]].AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
+            foreach (var key in ColumnMap.Keys)
+            {
+                if (key != ColumnKey.Comment)
+                {
+                    dataGridView1.Columns[ColumnMap[key]].AutoSizeMode = DataGridViewAutoSizeColumnMode.None;
+                }
+            }
+
+        }
+        private void AddGridColumn(ColumnKey key, string header, int width, bool editable)
+        {
+            var col = new DataGridViewTextBoxColumn
+            {
+                HeaderText = header,
+                Width = width,
+                ReadOnly = !editable,
+                Name = key.ToString()
+            };
+
+            int index = dataGridView1.Columns.Add(col);
+            ColumnMap[key] = index;
+        }
+
+
+
+
+
+
         public Form1()
         {
             InitializeComponent();
+            InitGridColumns();
         }
 
         private void button1_Click(object sender, EventArgs e)
         {
             //LineSplit("PICK_REF-XX.TXT");
             //AnalyzeJumps();
-            
+
             using (OpenFileDialog openFileDialog = new OpenFileDialog())
             {
                 openFileDialog.Filter = "BASIC veya metin dosyaları (*.bas;*.txt)|*.bas;*.txt|Tüm dosyalar (*.*)|*.*";
@@ -24,6 +93,8 @@ namespace FlowGen
                 {
                     LineSplit(openFileDialog.FileName);
                     AnalyzeJumps();
+                    AddSeparators();
+
                 }
             }
         }
@@ -38,87 +109,30 @@ namespace FlowGen
         }
 
 
-        public bool parseJump()
+
+        private void JumpToLine(string lineNum, string statementIndex)
         {
-            if (listBox1.SelectedItem == null)
-                return false;
+            int stIndex = int.TryParse(statementIndex, out int st) ? st : 0;
 
-            string selectedText = listBox1.SelectedItem.ToString().ToLower();
-
-            // Eğer "return" varsa, stack'e geri dön
-            if (selectedText == "return" || selectedText.Contains("return"))
+            for (int i = 0; i < dataGridView1.Rows.Count; i++)
             {
-                if (listBox2.Items.Count > 0)
+                var row = dataGridView1.Rows[i];
+                string currentLine = row.Cells[ColumnMap[ColumnKey.LineNumber]].Value?.ToString() ?? "";
+                if (currentLine == lineNum)
                 {
-                    if (int.TryParse(listBox2.Items[0].ToString(), out int returnIndex))
-                    {
-                        listBox1.SelectedIndex = returnIndex;
-                        listBox1.TopIndex = returnIndex;
-                        listBox2.Items.RemoveAt(0); // pop
-                    }
-                }
-                return true;
-            }
+                    int jumpIndex = i + stIndex;
+                    if (jumpIndex >= dataGridView1.Rows.Count) jumpIndex = i;
 
-            // GOTO veya GOSUB kontrolü
-            string keyword = null;
-            if (selectedText.Contains("gosub"))
-                keyword = "gosub";
-            else if (selectedText.Contains("goto"))
-                keyword = "goto";
-            else if (selectedText.Contains("go sub"))
-                keyword = "go sub";
-            else if (selectedText.Contains("go to"))
-                keyword = "go to";
-
-            if (keyword != null)
-            {
-                var match = System.Text.RegularExpressions.Regex.Match(selectedText, $@"{keyword}\s+(\d+)");
-                if (match.Success)
-                {
-                    string targetLine = match.Groups[1].Value;
-                    string statementLine = match.Groups[2].Value;
-
-
-                    if (keyword == "gosub")
-                    {
-                        int currentIndex = listBox1.SelectedIndex;
-                        listBox2.Items.Insert(0, currentIndex); // stack push
-                    }
-
-                    JumpToLine(targetLine, statementLine);
-                    return true;
-                }
-            }
-
-            // GOTO/GOSUB yoksa ama (->xxx) varsa — ilk hedefe atla
-            var jumpHintMatch = System.Text.RegularExpressions.Regex.Match(selectedText, @"\(->(\d+)\)");
-            if (jumpHintMatch.Success)
-            {
-                string hintedLine = jumpHintMatch.Groups[1].Value;
-                string statementLine = jumpHintMatch.Groups[2].Value;
-                JumpToLine(hintedLine, statementLine);
-                return true;
-            }
-            return false;
-        }
-
-        private void JumpToLine(string targetLine, string statement)
-        {
-            int st = 0;
-            if (!int.TryParse(statement, out st))
-                st = 0;  // sayı değilse varsayılan
-            for (int i = 0; i < listBox1.Items.Count; i++)
-            {
-                string itemText = listBox1.Items[i].ToString().TrimStart();
-                if (itemText.StartsWith(targetLine + " "))
-                {
-                    listBox1.SelectedIndex = i + st;
-                    listBox1.TopIndex = i;
+                    dataGridView1.ClearSelection();
+                    dataGridView1.Rows[jumpIndex].Selected = true;
+                    dataGridView1.FirstDisplayedScrollingRowIndex = i;
                     break;
                 }
             }
         }
+
+
+
         private void LineSplit(string filename)
         {
             if (!File.Exists(filename))
@@ -127,17 +141,74 @@ namespace FlowGen
                 return;
             }
 
-            listBox1.Items.Clear();
-
+            dataGridView1.Rows.Clear();
             var lines = File.ReadAllLines(filename);
 
-            foreach (var line in lines)
-            {
-                if (string.IsNullOrWhiteSpace(line))
-                    continue;
+            Color? currentColor = null;
+            string currentFlow = "";
+            string currentFunc = "";
+            string currentComment = "";
+            bool afterReturn = false;
 
-                List<string> statements = new List<string>();
-                StringBuilder current = new StringBuilder();
+            for (int lineIndex = 0; lineIndex < lines.Length; lineIndex++)
+            {
+                string rawLine = lines[lineIndex];
+                string line = rawLine.Trim();
+
+                // --- METADATA SATIRI (#...) ---
+                if (line.StartsWith("#"))
+                {
+                    string meta = line.Substring(1);
+
+                    // Renk
+                    var colorMatch = Regex.Match(meta, @"0x([0-9A-Fa-f]{6})");
+                    if (colorMatch.Success)
+                    {
+                        string hex = colorMatch.Groups[1].Value;
+                        currentColor = ColorTranslator.FromHtml("#" + hex);
+                    }
+
+                    // Flow işareti
+                    var flowMatch = Regex.Match(meta, @"@([^\%""]*)");
+                    if (flowMatch.Success)
+                        currentFlow = flowMatch.Groups[1].Value;
+
+                    // Function name
+                    var funcMatch = Regex.Match(meta, @"%([^\\""]*)");
+                    if (funcMatch.Success)
+                        currentFunc = funcMatch.Groups[1].Value;
+
+                    // Comment
+                    var commentMatch = Regex.Match(meta, "\"(.*)\"");
+                    if (commentMatch.Success)
+                        currentComment = commentMatch.Groups[1].Value;
+
+                    // Grid'e boş bir satır olarak ekle
+                    var metaRow = AddGridRow(new Dictionary<ColumnKey, string>());
+                    if (currentColor != null)
+                        metaRow.DefaultCellStyle.ForeColor = currentColor.Value;
+
+                    continue; // satır veri satırı değil, atla
+                }
+
+                // RETURN sonrası işaretleme
+                if (afterReturn && checkBox4.Checked)
+                {
+                    // Rastgele ama okunabilir renk
+                    currentColor = GetRandomLightColor();
+                }
+
+                afterReturn = false;
+
+                if (string.IsNullOrWhiteSpace(line))
+                {
+                    AddGridRow(new Dictionary<ColumnKey, string>());
+                    continue;
+                }
+
+                // Satırı : ile böl
+                List<string> statements = new();
+                StringBuilder current = new();
                 bool insideQuotes = false;
 
                 for (int i = 0; i < line.Length; i++)
@@ -158,207 +229,295 @@ namespace FlowGen
                     }
                 }
 
-                // C64 stili: Satır sonu varsa tırnak kapalı sayılır
-                if (insideQuotes)
-                    insideQuotes = false;
-
                 if (current.Length > 0)
                     statements.Add(current.ToString().Trim());
 
-                // Satır numarası + statements
+                // Ana satır
                 if (statements.Count > 0)
                 {
-                    listBox1.Items.Add(statements[0]);
+                    var match = Regex.Match(statements[0], @"^(\d+)\s*(.*)");
+                    string lineNum = match.Success ? match.Groups[1].Value : "";
+                    string command = match.Success ? match.Groups[2].Value : statements[0];
 
-                    for (int i = 1; i < statements.Count; i++)
-                    {
-                        if (!string.IsNullOrWhiteSpace(statements[i]))
-                            listBox1.Items.Add(": " + statements[i]);
+                    var row = AddGridRow(new Dictionary<ColumnKey, string>
+            {
+                { ColumnKey.FlowMarker, currentFlow },
+                { ColumnKey.LineNumber, lineNum },
+                { ColumnKey.Command, command },
+                { ColumnKey.FunctionName, currentFunc },
+                { ColumnKey.Comment, currentComment }
+            });
 
-                        // Okunabilirlik için return sonrası boşluk
-                        if (statements[i].ToLower().Contains("return"))
-                            listBox1.Items.Add("");
-                    }
+                    if (currentColor != null)
+                        row.DefaultCellStyle.ForeColor = currentColor.Value;
+
+                    if (command.ToLower().Contains("return"))
+                        if (ContainsKeywordOutsideQuotes(command, "return")) afterReturn = true;
+
+                }
+
+                // Alt ifadeler
+                for (int i = 1; i < statements.Count; i++)
+                {
+                    string sub = statements[i];
+                    if (string.IsNullOrWhiteSpace(sub))
+                        continue;
+
+                    var subRow = AddGridRow(new Dictionary<ColumnKey, string>
+            {
+                
+                { ColumnKey.Command, sub },
+                { ColumnKey.FunctionName, currentFunc },
+                { ColumnKey.Comment, currentComment }
+            });
+
+                    if (currentColor != null)
+                        subRow.DefaultCellStyle.ForeColor = currentColor.Value;
+
+                    if (sub.ToLower().Contains("return"))
+                        if (ContainsKeywordOutsideQuotes(sub, "return")) afterReturn = true;
+                }
+
+                // RETURN sonrası satır boş değilse boşluk ekle
+                if (afterReturn && (lineIndex + 1 >= lines.Length || !string.IsNullOrWhiteSpace(lines[lineIndex + 1])))
+                {
+                    AddGridRow(new Dictionary<ColumnKey, string>());
                 }
             }
         }
 
-
-        private void listBox1_Click(object sender, EventArgs e)
+        private bool ContainsKeywordOutsideQuotes(string input, string keyword)
         {
-            //if (listBox1.SelectedIndex > -1) parseJump();
-        }
+            bool insideQuotes = false;
+            string lowerKeyword = keyword.ToLower();
 
-        private void listBox2_Click(object sender, EventArgs e)
-        {
-            if (listBox2.SelectedIndex > -1) popJump();
-        }
-
-
-        private void popJump()
-        {
-
-            if (listBox2.SelectedItem == null)
-                return;
-
-            // Index bilgisini al
-            if (int.TryParse(listBox2.SelectedItem.ToString(), out int returnIndex))
+            for (int i = 0; i <= input.Length - keyword.Length; i++)
             {
-                // Geri zıpla
-                listBox1.SelectedIndex = returnIndex;
-                listBox1.TopIndex = returnIndex;
+                char c = input[i];
+                if (c == '"')
+                    insideQuotes = !insideQuotes;
+
+                if (!insideQuotes)
+                {
+                    // keyword'e denk gelen kısmı kontrol et
+                    string fragment = input.Substring(i, keyword.Length).ToLower();
+                    if (fragment == lowerKeyword)
+                    {
+                        // harf sınırında mı?
+                        bool leftOk = (i == 0 || !char.IsLetterOrDigit(input[i - 1]));
+                        bool rightOk = (i + keyword.Length >= input.Length || !char.IsLetterOrDigit(input[i + keyword.Length]));
+                        if (leftOk && rightOk)
+                            return true;
+                    }
+                }
             }
 
-            // Stack'ten çıkar (pop)
-            listBox2.Items.RemoveAt(listBox2.Items.Count - 1);
+            return false;
         }
+
+
+        private DataGridViewRow AddGridRow(Dictionary<ColumnKey, string> data)
+        {
+            object[] cells = new object[dataGridView1.Columns.Count];
+
+            foreach (var pair in data)
+            {
+                if (ColumnMap.TryGetValue(pair.Key, out int colIndex))
+                {
+                    cells[colIndex] = pair.Value;
+                }
+            }
+
+            int rowIndex = dataGridView1.Rows.Add(cells);
+            return dataGridView1.Rows[rowIndex];
+        }
+
+
+        private void AddSeparators()
+        {
+            for (int i = dataGridView1.Rows.Count - 1; i > 0; i--)
+            {
+                var current = dataGridView1.Rows[i];
+                var above = dataGridView1.Rows[i - 1];
+
+                string incoming = GetCell(i, ColumnKey.IncomingRefs);
+                string previousCommand = GetCell(i - 1, ColumnKey.Command);
+
+                if (!string.IsNullOrWhiteSpace(incoming) &&
+                    !string.IsNullOrWhiteSpace(previousCommand))
+                {
+                    // Boş satırı araya ekle
+                    dataGridView1.Rows.Insert(i, new DataGridViewRow());
+
+                    // Araya eklenen satır varsayılan stillerle boş kalır
+                }
+            }
+
+        }
+
+
 
         private void AnalyzeJumps()
         {
-
-            // Şimdi her item'ı tek tek analiz et
-            for (int i = 0; i < listBox1.Items.Count; i++)
+            for (int i = 0; i < dataGridView1.Rows.Count; i++)
             {
-                string item = listBox1.Items[i].ToString().Trim();
+                var row = dataGridView1.Rows[i];
+                string command = GetCell(i, ColumnKey.Command);
                 string sourceLine = "";
                 int statementIndex = 0;
 
-                // Satır numarası içeren satır mı?
-                var match = System.Text.RegularExpressions.Regex.Match(item, @"^(\d+)\b");
-                if (match.Success)
+                // Satır numarası var mı?
+                string lineNum = GetCell(i, ColumnKey.LineNumber);
+                if (!string.IsNullOrEmpty(lineNum))
                 {
-                    sourceLine = match.Groups[1].Value;
-                    statementIndex = 0; // ilk statement
+                    sourceLine = lineNum;
+                    statementIndex = 0;
                 }
-                else if (item.StartsWith(":")) // sub-statement
+                else
                 {
-                    // önceki satırı bulup line numarasını al
+                    // Önceki line number'ı bul
                     for (int j = i - 1; j >= 0; j--)
                     {
-                        string prev = listBox1.Items[j].ToString().Trim();
-                        var prevMatch = System.Text.RegularExpressions.Regex.Match(prev, @"^(\d+)\b");
-                        if (prevMatch.Success)
+                        string prevLine = GetCell(j, ColumnKey.LineNumber);
+                        if (!string.IsNullOrEmpty(prevLine))
                         {
-                            sourceLine = prevMatch.Groups[1].Value;
+                            sourceLine = prevLine;
                             break;
                         }
                     }
 
-                    // statement index = kaçıncı : satırı olduğunu say
-                    statementIndex = 0;
+                    // Bu statement kaçıncı alt satır?
                     for (int j = i - 1; j >= 0; j--)
                     {
-                        string prev = listBox1.Items[j].ToString().Trim();
-                        if (!prev.StartsWith(":"))
+                        if (!string.IsNullOrEmpty(GetCell(j, ColumnKey.LineNumber)))
                             break;
+
                         statementIndex++;
                     }
-                    statementIndex++; // 1-based index
+
+                    statementIndex++; // 1-based
                 }
 
-                // Eğer bu item içinde jump varsa, hedef satırı bul
-                var jumpMatch = System.Text.RegularExpressions.Regex.Match(item.ToLower(), @"\b(goto|gosub|go to|go sub)\s+(\d+)\b");
-                if (jumpMatch.Success)
+
+                // ON ... GOTO/GOSUB ... durumu (hesaplamalı da olabilir)
+                var onMatch = Regex.Match(command.ToLower(), @"\bon\s*.+?\s+(goto|gosub)\s+(.+)");
+
+                if (onMatch.Success)
                 {
-                    string target = jumpMatch.Groups[2].Value;
-                    string callerRef = $"->{sourceLine}:{statementIndex}";
+                    string list = onMatch.Groups[2].Value;
+                    string callerRef = $"{sourceLine}:{statementIndex}";
 
-                    // hedef satırın index'ini bul ve (->X:Y) ekle
-                    for (int k = 0; k < listBox1.Items.Count; k++)
+                    var targets = list.Split(',')
+                                      .Select(s => s.Trim())
+                                      .Where(s => Regex.IsMatch(s, @"^\d+$")) // sadece sabit sayı satırlar
+                                      .ToList();
+
+                    foreach (string targetLines in targets)
                     {
-                        string targetItem = listBox1.Items[k].ToString().TrimStart();
-                        if (targetItem.StartsWith(target + " "))
+                        for (int k = 0; k < dataGridView1.Rows.Count; k++)
                         {
-                            string existing = listBox1.Items[k].ToString();
-                            if (!existing.Contains(callerRef))
+                            if (GetCell(k, ColumnKey.LineNumber) == targetLines)
                             {
-                                // ÖNCE: Gerekirse bir üst satıra boşluk ekle
-                                if (k > 0 && !string.IsNullOrWhiteSpace(listBox1.Items[k - 1].ToString()))
-                                {
-                                    listBox1.Items.Insert(k, ""); // boş satır ekle
-                                    k++; // eklenen boşluk yüzünden hedef satır bir aşağıya kaydı
-                                }
+                                string existing = GetCell(k, ColumnKey.IncomingRefs);
+                                var refs = existing.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries)
+                                                   .Select(s => s.Trim())
+                                                   .ToList();
 
-                                // Artık işaretlemeyi ekleyebiliriz
-                                listBox1.Items[k] = listBox1.Items[k].ToString() + " (" + callerRef + ")";
+                                if (!refs.Contains(callerRef))
+                                {
+                                    refs.Add(callerRef);
+                                    SetCell(k, ColumnKey.IncomingRefs, string.Join(", ", refs));
+                                }
+                                break;
                             }
-                            break;
                         }
                     }
 
+                    continue; // zaten işlendiyse kalan kısmı atla
                 }
-            }
-        }
-        bool mouseHeld = false;
-        private void listBox1_MouseDown(object sender, MouseEventArgs e)
-        {
-            if ((Control.ModifierKeys & Keys.Alt) == Keys.Alt)
-            {
-                if (mouseHeld) return;
-
-                mouseHeld = true;
-                int index = listBox1.IndexFromPoint(e.Location);
-                if (index < 0) return;
 
 
+                // Hedef satır tespiti: GOTO/GOSUB ya da THEN <number>
+                string targetLine = null;
 
-                string text = listBox1.Items[index].ToString();
-
-                Rectangle itemRect = listBox1.GetItemRectangle(index);
-                int clickX = e.X - itemRect.X;
-                // Ortalama karakter genişliği hesapla
-                //Size avgCharSize = TextRenderer.MeasureText(" ", listBox1.Font);
-                var s = listBox1.Font.Size;
-                int charIndex = (int)(clickX / s);// avgCharSize.Width;
-                if (charIndex > text.Length) { parseJump(); return; }
-
-                if (charIndex < Math.Min(12, text.Length)) if (parseJump()) return;
-                if (charIndex < 5) charIndex = 5;
-
-
-                // Şimdi satırdaki tüm (->XXXX) eşleşmelerini bulalım
-                string substring = text.Substring(charIndex - 4); // charIndex'ten itibaren kalan kısmı al
-                var matches = System.Text.RegularExpressions.Regex.Matches(substring, @"\(->(\d+):(\d+)\)");
-                if (matches.Count > 0)
+                // 1. GOTO / GOSUB
+                var jumpMatch = Regex.Match(command.ToLower(), @"\b(go\s*to|go\s*sub|goto|gosub)\s+(\d+)\b");
+                if (jumpMatch.Success)
                 {
-                    string targetLine = matches[0].Groups[1].Value;
-                    string statementLine = matches[0].Groups[2].Value;
+                    targetLine = jumpMatch.Groups[2].Value;
+                }
 
-                    JumpToLine(targetLine, statementLine);
+                // 2. THEN <number> (oto-GOTO kabul)
+                if (targetLine == null)
+                {
+                    var thenMatch = Regex.Match(command.ToLower(), @"\bthen\s+(\d+)\b");
+                    if (thenMatch.Success)
+                    {
+                        targetLine = thenMatch.Groups[1].Value;
+                    }
+                }
+
+                // Hedef bulunduysa referans olarak işaretle
+                if (!string.IsNullOrEmpty(targetLine))
+                {
+                    string callerRef = $"{sourceLine}:{statementIndex}";
+                    bool found = false;
+
+
+                    int targetLineNum = int.Parse(targetLine);
+                    int bestMatchIndex = -1;
+                    int bestMatchValue = int.MaxValue;
+
+                    for (int k = 0; k < dataGridView1.Rows.Count; k++)
+                    {
+                        string candidate = GetCell(k, ColumnKey.LineNumber);
+                        if (int.TryParse(candidate, out int lineNumb))
+                        {
+                            if (lineNumb == targetLineNum)
+                            {
+                                bestMatchIndex = k;
+                                break; // tam eşleşme varsa onu seç
+                            }
+                            else if (lineNumb > targetLineNum && lineNumb < bestMatchValue)
+                            {
+                                bestMatchIndex = k;       // en küçük büyük değer
+                                bestMatchValue = lineNumb;
+                            }
+                        }
+                    }
+
+                    if (bestMatchIndex != -1)
+                    {
+                        string existing = GetCell(bestMatchIndex, ColumnKey.IncomingRefs);
+                        var refs = existing.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries)
+                                           .Select(s => s.Trim())
+                                           .ToList();
+
+                        if (!refs.Contains(callerRef))
+                        {
+                            refs.Add(callerRef);
+                            SetCell(bestMatchIndex, ColumnKey.IncomingRefs, string.Join(", ", refs));
+                        }
+                        found = true;
+                    }
+
+
+
+
+                    if (!found) { MessageBox.Show("Satır bulunamadı.", callerRef, MessageBoxButtons.OK, MessageBoxIcon.Information); } 
                 }
             }
         }
-        private void listBox1_MouseUp(object sender, MouseEventArgs e)
+
+
+
+        private void SetCell(int rowIndex, ColumnKey key, string value)
         {
-            if (e.Button == MouseButtons.Right)
-            {
-                int index = listBox1.IndexFromPoint(e.Location);
-                if (index == ListBox.NoMatches) return;
-
-                listBox1.SelectedIndices.Clear();
-                listBox1.SelectedIndex = index;
-
-                string text = listBox1.Items[index].ToString();
-
-                BuildDynamicJumpMenuItems(text);
-
-                contextMenuStrip1.Show(listBox1, e.Location);
-            }
+            dataGridView1.Rows[rowIndex].Cells[ColumnMap[key]].Value = value;
         }
 
-        private void listBox1_MouseUp2(object sender, MouseEventArgs e)
-        {
-            mouseHeld = false;
+        
 
-            // Sadece sağ tıklamada göster
-            if (e.Button == MouseButtons.Right)
-            {
-                // Menü konumunda göster
-                contextMenuStrip1.Show(listBox1, e.Location);
-
-            }
-
-        }
 
         private void button2_Click(object sender, EventArgs e)
         {
@@ -373,25 +532,38 @@ namespace FlowGen
 
             int startIndex = 0;
 
-            if (!checkBox1.Checked && listBox1.SelectedIndex >= 0)
+            if (!checkBox1.Checked && dataGridView1.CurrentCell != null)
             {
-                // Devam eden arama için, şu anki seçilinin bir sonrasından başla
-                startIndex = listBox1.SelectedIndex + 1;
+                startIndex = dataGridView1.CurrentCell.RowIndex + 1;
             }
 
-            for (int i = startIndex; i < listBox1.Items.Count; i++)
+            for (int i = startIndex; i < dataGridView1.Rows.Count; i++)
             {
-                string line = listBox1.Items[i].ToString().ToLower();
-                if (line.Contains(query))
+                // Aranacak sütunlar — istersek genişletebiliriz
+                string combined = (
+                    GetCell(i, ColumnKey.LineNumber) + " " +
+                    GetCell(i, ColumnKey.Command) + " " +
+                    GetCell(i, ColumnKey.FunctionName) + " " +
+                    GetCell(i, ColumnKey.Comment)
+                ).ToLower();
+
+                if (combined.Contains(query))
                 {
-                    listBox1.SelectedIndex = i;
-                    listBox1.TopIndex = i;
+                    dataGridView1.ClearSelection();
+                    dataGridView1.Rows[i].Selected = true;
+                    dataGridView1.CurrentCell = dataGridView1.Rows[i].Cells[ColumnMap[ColumnKey.Command]];
+                    dataGridView1.FirstDisplayedScrollingRowIndex = Math.Max(0, i - 2);
                     return;
                 }
             }
 
-            // Eşleşme bulunamadı
             MessageBox.Show("Metin bulunamadı.", "Arama", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        }
+
+        private string GetCell(int rowIndex, ColumnKey key)
+        {
+            var cell = dataGridView1.Rows[rowIndex].Cells[ColumnMap[key]];
+            return cell?.Value?.ToString() ?? "";
         }
 
         private void textBox1_MouseDown(object sender, MouseEventArgs e)
@@ -426,51 +598,78 @@ namespace FlowGen
 
         }
 
-        private void BuildDynamicJumpMenuItems(string text)
+        private void BuildDynamicJumpMenuItems(string commandText, string incomingRefs)
         {
-            // Önce önceki dinamikleri sil
+            // Önceki dinamik öğeleri sil
             for (int i = contextMenuStrip1.Items.Count - 1; i >= 0; i--)
             {
-                var item = contextMenuStrip1.Items[i];
-                if (item.Tag is string tag && tag.StartsWith("jump:"))
-                {
+                if (contextMenuStrip1.Items[i].Tag is string tag && tag.StartsWith("jump:"))
                     contextMenuStrip1.Items.RemoveAt(i);
+            }
+
+            bool added = false;
+
+            // GOTO/GOSUB varsa en üste ekle
+            var match = Regex.Match(commandText.ToLower(), @"\b(go\s*to|go\s*sub|goto|gosub)\s+(\d+)\b");
+            if (match.Success)
+            {
+                string targetLine = match.Groups[2].Value;
+
+                var jumpItem = new ToolStripMenuItem($"→ GOTO/GOSUB {targetLine}")
+                {
+                    Tag = $"jump:{targetLine}"
+                };
+                jumpItem.Click += DynamicJumpMenuItem_Click;
+                //contextMenuStrip1.Items.Insert(0, jumpItem);
+                contextMenuStrip1.Items.Add(jumpItem);
+                added = true;
+            }
+
+            // Gelen referanslar varsa altına ekle
+            var refs = incomingRefs.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries)
+                                   .Select(s => s.Trim());
+
+            foreach (var reference in refs)
+            {
+                string[] parts = reference.Split(':');
+                if (parts.Length == 2 && int.TryParse(parts[0], out int line))
+                {
+                    var refItem = new ToolStripMenuItem($"↩ From {reference}")
+                    {
+                        Tag = $"jump:{parts[0]}:{parts[1]}"
+                    };
+                    refItem.Click += DynamicJumpMenuItem_Click;
+                    contextMenuStrip1.Items.Add(refItem);
+                    added = true;
                 }
             }
 
-            // Tüm (->XXXX:YYY) eşleşmelerini bul
-            var matches = Regex.Matches(text, @"\(->(\d+):(\d+)\)");
-
-            if (matches.Count > 0)
+            // Eğer hiç eklenmemişse boş gösterim
+            if (!added)
             {
-                //contextMenuStrip1.Items.Add(new ToolStripSeparator());
-
-                foreach (Match match in matches)
+                var refItem = new ToolStripMenuItem("(No references)") 
                 {
-                    string line = match.Groups[1].Value;
-                    string statement = match.Groups[2].Value;
-
-                    var jumpItem = new ToolStripMenuItem($"→ Goto {line}:{statement}");
-                    jumpItem.Tag = $"jump:{line}:{statement}";
-                    jumpItem.Click += DynamicJumpMenuItem_Click;
-
-                    contextMenuStrip1.Items.Add(jumpItem);
-                }
+                    Tag = $"jump:0:0",
+                    Enabled = false 
+                };
+                contextMenuStrip1.Items.Add(refItem );
             }
         }
+
+
         private void DynamicJumpMenuItem_Click(object sender, EventArgs e)
         {
             if (sender is ToolStripMenuItem item && item.Tag is string tag && tag.StartsWith("jump:"))
             {
-                var parts = tag.Split(':');
-                if (parts.Length == 3)
-                {
-                    string targetLine = parts[1];
-                    string statement = parts[2];
-                    JumpToLine(targetLine, statement);
-                }
+                string[] parts = tag.Split(':');
+                string targetLine = parts[1];
+
+                string statementIndex = (parts.Length > 2) ? parts[2] : "0";
+
+                JumpToLine(targetLine, statementIndex);
             }
         }
+
 
 
         private void GeneralMenuItem_Click(object sender, EventArgs e)
@@ -479,92 +678,300 @@ namespace FlowGen
             {
                 switch (tag)
                 {
-                    case 1: // Edit
-                        EditSelectedLine();
-                        break;
-
                     case 2: // Add empty line
-                        AddEmptyLine();
+                        AddEmptyGridLine();
                         break;
 
                     case 3: // Export to file...
-                        ExportSelectionToFile();
-
+                        ExportGridSelectionToFile();
                         break;
 
                     case 4: // Copy
-                        CopySelection();
+                        CopyGridSelection();
                         break;
 
                     case 5: // Paste
-                        PasteToSelection();
+                        PasteToGridSelection();
                         break;
 
                     case 6: // Cut
-                        CutSelection();
+                        CutGridSelection();
                         break;
-                    case 7: //add description
-                        addDescription();
+
+                    case 7: // Add description (konuşulacak)
+                        addGridDescription();
                         break;
-                    case 8:
-                        follow();
+
+                    case 10: //seçili hücrelerin yazı rengini değiştirir
+                        changeGridSelection();
                         break;
 
                     default:
-                        MessageBox.Show("Bilinmeyen işlem");
+                        MessageBox.Show("Unknown Selection");
                         break;
                 }
             }
         }
-        private void follow()
+
+        private void changeGridSelection()
         {
-            parseJump();
+            if (dataGridView1.SelectedCells.Count == 0)
+            {
+                MessageBox.Show("Lütfen renk değiştirmek için hücre(ler) seçin.", "Yazı Rengi", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            using ColorDialog cd = new ColorDialog
+            {
+                AllowFullOpen = true,
+                FullOpen = true
+            };
+
+            if (cd.ShowDialog() != DialogResult.OK)
+                return;
+
+            foreach (DataGridViewCell cell in dataGridView1.SelectedCells)
+            {
+                cell.Style.ForeColor = cd.Color;
+            }
         }
 
-        private void EditSelectedLine()
+
+        private void AddEmptyGridLine()
         {
-            if (listBox1.SelectedIndices.Count == 0) return;
+            // Hedef satır indeksi: seçili hücrenin satırı
+            int insertIndex = dataGridView1.SelectedCells.Count > 0
+                ? dataGridView1.SelectedCells[0].RowIndex
+                : dataGridView1.Rows.Count;
 
-            int index = listBox1.SelectedIndices[0];
-            string current = listBox1.Items[index].ToString();
+            // Tüm sütunlar için boşluklar oluştur
+            object[] emptyRow = new object[dataGridView1.Columns.Count];
+            for (int i = 0; i < emptyRow.Length; i++)
+                emptyRow[i] = "";
 
-            string input = Microsoft.VisualBasic.Interaction.InputBox("Düzenle:", "Item Edit", current);
-            if (!string.IsNullOrEmpty(input))
-                listBox1.Items[index] = input;
+            dataGridView1.Rows.Insert(insertIndex, emptyRow);
+
+            // Yeni satırı seç ve göster
+            dataGridView1.ClearSelection();
+            dataGridView1.Rows[insertIndex].Selected = true;
+            //dataGridView1.FirstDisplayedScrollingRowIndex = Math.Max(0, insertIndex - 2);
         }
 
-        private void addDescription()
+
+        private void ExportGridSelectionToFile()
         {
-            if (listBox1.SelectedIndices.Count == 0) return;
+            if (dataGridView1.SelectedRows.Count == 0)
+            {
+                MessageBox.Show("Lütfen en az bir satır seçin.", "Uyarı", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
 
-            int index = listBox1.SelectedIndices[0];
-            string current = "# ";
-
-            string input = Microsoft.VisualBasic.Interaction.InputBox("Düzenle:", "Item Edit", current);
-            if (!string.IsNullOrEmpty(input))
-                listBox1.Items[index] = input;
-        }
-
-        private void AddEmptyLine()
-        {
-            if (listBox1.SelectedIndices.Count == 0) return;
-            int index = listBox1.SelectedIndices[0];
-            listBox1.Items.Insert(index, "");
-        }
-
-        private void ExportToFile2()
-        {
             using SaveFileDialog sfd = new SaveFileDialog
             {
                 Filter = "Text Files (*.txt)|*.txt|All Files (*.*)|*.*",
                 FileName = "export.txt"
             };
 
-            if (sfd.ShowDialog() == DialogResult.OK)
+            if (sfd.ShowDialog() != DialogResult.OK)
+                return;
+
+            List<string> lines = new();
+
+            foreach (DataGridViewRow row in dataGridView1.SelectedRows)
             {
-                File.WriteAllLines(sfd.FileName, listBox1.Items.Cast<string>());
-                MessageBox.Show("Dosya dışa aktarıldı.");
+                string line = GetCell(row.Index, ColumnKey.LineNumber).Trim();
+                string command = GetCell(row.Index, ColumnKey.Command).Trim();
+
+                if (!string.IsNullOrEmpty(command))
+                {
+                    if (!string.IsNullOrEmpty(line))
+                        lines.Add($"{line} {command}");
+                    else
+                        lines.Add($": {command}");
+                }
             }
+
+            // Satır sırasını korumak için sıralıyoruz
+            lines.Reverse(); // çünkü SelectedRows sondan başa sıralı gelir
+
+            File.WriteAllLines(sfd.FileName, lines);
+            MessageBox.Show("Dosya dışa aktarıldı.", "Export", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        }
+
+
+
+        private void CopyGridSelection()
+        {
+            if (dataGridView1.SelectedRows.Count == 0)
+            {
+                MessageBox.Show("Kopyalanacak satır yok.", "Kopyala", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            // Seçilen satırları sıralı hale getirelim
+            var selectedRows = dataGridView1.SelectedRows.Cast<DataGridViewRow>()
+                                 .OrderBy(r => r.Index)
+                                 .ToList();
+
+            StringBuilder sb = new();
+
+            foreach (var row in selectedRows)
+            {
+                string line = GetCell(row.Index, ColumnKey.LineNumber).Trim();
+                string command = GetCell(row.Index, ColumnKey.Command).Trim();
+
+                if (!string.IsNullOrEmpty(command))
+                {
+                    if (!string.IsNullOrEmpty(line))
+                        sb.AppendLine($"{line} {command}");
+                    else
+                        sb.AppendLine($": {command}");
+                }
+            }
+
+            if (sb.Length > 0)
+            {
+                Clipboard.SetText(sb.ToString());
+                MessageBox.Show("Seçim panoya kopyalandı.", "Kopyala", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+        }
+        private void PasteToGridSelection()
+        {
+            string clipText = Clipboard.GetText();
+
+            if (string.IsNullOrWhiteSpace(clipText))
+            {
+                MessageBox.Show("Panoda metin bulunamadı.", "Yapıştır", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            var lines = clipText.Split(new[] { "\r\n", "\n" }, StringSplitOptions.RemoveEmptyEntries);
+            var selected = dataGridView1.SelectedRows.Cast<DataGridViewRow>()
+                             .OrderBy(r => r.Index)
+                             .ToList();
+
+            if (selected.Count == 0)
+            {
+                MessageBox.Show("Lütfen yapıştırmak için satır(lar) seçin.", "Yapıştır", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            int pasteCount = Math.Min(lines.Length, selected.Count);
+
+            for (int i = 0; i < pasteCount; i++)
+            {
+                string line = lines[i].Trim();
+
+                string lineNumber = "";
+                string command = "";
+
+                if (line.StartsWith(":"))
+                {
+                    // Sadece komut
+                    command = line.Substring(1).Trim();
+                }
+                else
+                {
+                    // Line number + command ayrıştır
+                    var match = Regex.Match(line, @"^(\d+)\s*(.*)");
+                    if (match.Success)
+                    {
+                        lineNumber = match.Groups[1].Value;
+                        command = match.Groups[2].Value;
+                    }
+                    else
+                    {
+                        // Line yoksa tamamı command sayılır
+                        command = line;
+                    }
+                }
+
+                SetCell(selected[i].Index, ColumnKey.LineNumber, lineNumber);
+                SetCell(selected[i].Index, ColumnKey.Command, command);
+            }
+
+            MessageBox.Show($"Yapıştırıldı: {pasteCount} satır", "Yapıştır", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        }
+
+
+        private void CutGridSelection()
+        {
+            if (dataGridView1.SelectedRows.Count == 0)
+            {
+                MessageBox.Show("Kesilecek satır yok.", "Kes", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            // 1. Adım: Kopyala
+            CopyGridSelection();
+
+            // 2. Adım: Seçilen satırları sırayla temizle
+            var selectedRows = dataGridView1.SelectedRows.Cast<DataGridViewRow>()
+                                 .OrderBy(r => r.Index);
+
+            foreach (var row in selectedRows)
+            {
+                SetCell(row.Index, ColumnKey.LineNumber, "");
+                SetCell(row.Index, ColumnKey.Command, "");
+            }
+
+            MessageBox.Show("Satırlar kesildi.", "Kes", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        }
+
+        private void addGridDescription()
+        {
+            if (dataGridView1.SelectedRows.Count < 2)
+            {
+                MessageBox.Show("Lütfen en az iki ardışık satır seçin.", "Fonksiyon Etiketi", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            // Satırları sıraya sok
+            var selected = dataGridView1.SelectedRows.Cast<DataGridViewRow>()
+                            .OrderBy(r => r.Index)
+                            .ToList();
+
+            // Seçimler ardışık mı?
+            for (int i = 1; i < selected.Count; i++)
+            {
+                if (selected[i].Index != selected[i - 1].Index + 1)
+                {
+                    MessageBox.Show("Seçilen satırlar ardışık olmalı (boşluk olmamalı).", "Hata", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+            }
+
+            string funcName = Microsoft.VisualBasic.Interaction.InputBox(
+                "Fonksiyon adı girin:", "Fonksiyon Etiketi", "");
+
+            if (string.IsNullOrWhiteSpace(funcName))
+                return;
+
+            // İşaretleme: üst ┌, orta │, alt └
+            for (int i = 0; i < selected.Count; i++)
+            {
+                int rowIndex = selected[i].Index;
+
+                string marker = "│";
+                if (i == 0)
+                    marker = "┌";
+                else if (i == selected.Count - 1)
+                    marker = "└";
+
+                SetCell(rowIndex, ColumnKey.FlowMarker, marker);
+                SetCell(rowIndex, ColumnKey.FunctionName, funcName);
+            }
+
+            MessageBox.Show("Fonksiyon bloğu etiketlendi.", "Tamam", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        }
+
+        private Color GetRandomLightColor()
+        {
+            Random rnd = new Random();
+            int r = rnd.Next(0, 130);
+            int g = rnd.Next(0, 130);
+            int b = rnd.Next(0, 130);
+            return Color.FromArgb(r, g, b);
         }
 
         private void ExportToFile()
@@ -578,94 +985,109 @@ namespace FlowGen
             if (sfd.ShowDialog() != DialogResult.OK)
                 return;
 
-            var lines = listBox1.Items.Cast<string>().ToList();
             var output = new List<string>();
-            string lastBaseLine = null;
 
-            foreach (var rawLine in lines)
+            if (checkBox3.Checked)
             {
-                string line = rawLine;
-
-                // checkBox2: (->...) kısmını kırp
-                if (checkBox2.Checked)
+                // Mod 1: Classic BASIC dump
+                string currentLine = "";
+                for (int i = 0; i < dataGridView1.Rows.Count; i++)
                 {
-                    int idx = line.IndexOf(" (->");
-                    if (idx > -1)
-                        line = line.Substring(0, idx).TrimEnd();
-                }
+                    string lineNum = GetCell(i, ColumnKey.LineNumber).Trim();
+                    string command = GetCell(i, ColumnKey.Command).Trim();
 
-                // checkBox3: : ile başlayan satırı birleştir
-                if (checkBox3.Checked && line.TrimStart().StartsWith(":"))
-                {
-                    if (output.Count > 0)
+                    if (!string.IsNullOrWhiteSpace(lineNum))
                     {
-                        output[output.Count - 1] += " " + line.Trim();
+                        // önceki satırı yaz
+                        if (!string.IsNullOrEmpty(currentLine))
+                            output.Add(currentLine);
+
+                        currentLine = $"{lineNum} {command}";
                     }
-                    else
+                    else if (!string.IsNullOrWhiteSpace(command))
                     {
-                        // önceki satır yoksa, tek başına ekle
-                        output.Add(line.Trim());
+                        currentLine += $": {command}";
                     }
                 }
-                else
+
+                if (!string.IsNullOrEmpty(currentLine))
+                    output.Add(currentLine);
+            }
+            else
+            {
+                // Mod 2: Meta destekli gelişmiş export
+                Color? lastColor = null;
+                string lastFlow = "";
+                string lastFunc = "";
+                string lastComment = "";
+
+                for (int i = 0; i < dataGridView1.Rows.Count; i++)
                 {
-                    output.Add(line);
+                    string lineNum = GetCell(i, ColumnKey.LineNumber).Trim();
+                    string command = GetCell(i, ColumnKey.Command).Trim();
+                    string flow = GetCell(i, ColumnKey.FlowMarker).Trim();
+                    string func = GetCell(i, ColumnKey.FunctionName).Trim();
+                    string comment = GetCell(i, ColumnKey.Comment).Trim();
+
+                    bool isEmptyLine = string.IsNullOrWhiteSpace(lineNum) && string.IsNullOrWhiteSpace(command);
+                    if (isEmptyLine)
+                    {
+                        output.Add(""); // gerçek boşluk
+                        continue;
+                    }
+
+                    // Özellik farkı varsa meta satırı üret
+                    var rowColor = dataGridView1.Rows[i].DefaultCellStyle.ForeColor;
+                    bool colorChanged = lastColor == null || !rowColor.Equals(lastColor.Value);
+                    bool flowChanged = flow != lastFlow;
+                    bool funcChanged = func != lastFunc;
+                    bool commentChanged = comment != lastComment;
+
+                    if (colorChanged || flowChanged || funcChanged || commentChanged)
+                    {
+                        string metaLine = "#";
+
+                        if (colorChanged)
+                        {
+                            metaLine += $"0x{rowColor.R:X2}{rowColor.G:X2}{rowColor.B:X2}";
+                            lastColor = rowColor;
+                        }
+
+                        if (flowChanged)
+                        {
+                            metaLine += $"@{flow}";
+                            lastFlow = flow;
+                        }
+
+                        if (funcChanged)
+                        {
+                            metaLine += $"%{func}";
+                            lastFunc = func;
+                        }
+
+                        if (commentChanged)
+                        {
+                            metaLine += $"\"{comment}\"";
+                            lastComment = comment;
+                        }
+
+                        output.Add(metaLine);
+                    }
+
+                    // Satır çıktısı
+                    string lineOut = string.IsNullOrEmpty(lineNum)
+                        ? $": {command}"
+                        : $"{lineNum} {command}";
+
+                    output.Add(lineOut);
                 }
             }
 
             File.WriteAllLines(sfd.FileName, output);
-            MessageBox.Show("Dosya dışa aktarıldı.", "Bilgi", MessageBoxButtons.OK, MessageBoxIcon.Information);
-        }
-
-        private void ExportSelectionToFile()
-        {
-            if (listBox1.SelectedItems.Count == 0)
-            {
-                MessageBox.Show("Hiçbir satır seçilmedi.", "Uyarı", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return;
-            }
-
-            using SaveFileDialog sfd = new SaveFileDialog
-            {
-                Filter = "Text Files (*.txt)|*.txt|All Files (*.*)|*.*",
-                FileName = "selection.txt"
-            };
-
-            if (sfd.ShowDialog() == DialogResult.OK)
-            {
-                File.WriteAllLines(sfd.FileName, listBox1.SelectedItems.Cast<string>());
-                MessageBox.Show("Seçili satırlar dışa aktarıldı.", "Bilgi", MessageBoxButtons.OK, MessageBoxIcon.Information);
-            }
+            MessageBox.Show("Dosya dışa aktarıldı.", "Export", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 
 
-        private void CopySelection()
-        {
-            if (listBox1.SelectedItems.Count == 0) return;
-            string joined = string.Join(Environment.NewLine, listBox1.SelectedItems.Cast<string>());
-            if (joined != "") Clipboard.SetText(joined);
-        }
-
-        private void PasteToSelection()
-        {
-            if (!Clipboard.ContainsText()) return;
-            string[] lines = Clipboard.GetText().Split(new[] { "\r\n", "\n" }, StringSplitOptions.None);
-
-            int index = listBox1.SelectedIndices.Count > 0 ? listBox1.SelectedIndices[0] : listBox1.Items.Count;
-            foreach (var line in lines.Reverse())
-            {
-                listBox1.Items.Insert(index, line);
-            }
-        }
-
-        private void CutSelection()
-        {
-            CopySelection();
-            for (int i = listBox1.SelectedIndices.Count - 1; i >= 0; i--)
-            {
-                listBox1.Items.RemoveAt(listBox1.SelectedIndices[i]);
-            }
-        }
 
         private void toolStripMenuItem2_Click(object sender, EventArgs e)
         {
@@ -676,5 +1098,24 @@ namespace FlowGen
         {
             ExportToFile();
         }
+
+        private void dataGridView1_MouseClick(object sender, MouseEventArgs e)
+        {
+            if (e.Button == MouseButtons.Right)
+            {
+                // En az bir satır seçili mi?
+                if (dataGridView1.SelectedRows.Count == 0)
+                    return;
+
+                // İlk seçili satır
+                var row = dataGridView1.SelectedRows[0];
+                string command = row.Cells[ColumnMap[ColumnKey.Command]].Value?.ToString() ?? "";
+                string incoming = row.Cells[ColumnMap[ColumnKey.IncomingRefs]].Value?.ToString() ?? "";
+
+                BuildDynamicJumpMenuItems(command, incoming);
+                contextMenuStrip1.Show(dataGridView1, e.Location);
+            }
+        }
+
     }
 }
