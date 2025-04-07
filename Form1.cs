@@ -1,4 +1,5 @@
-﻿using System.Security.Cryptography.Xml;
+﻿using System.Data;
+using System.Security.Cryptography.Xml;
 using System.Text;
 using System.Text.RegularExpressions;
 
@@ -149,6 +150,7 @@ namespace FlowGen
             string currentFunc = "";
             string currentComment = "";
             bool afterReturn = false;
+            bool loadingFlowGen = false;
 
             for (int lineIndex = 0; lineIndex < lines.Length; lineIndex++)
             {
@@ -166,6 +168,7 @@ namespace FlowGen
                     {
                         string hex = colorMatch.Groups[1].Value;
                         currentColor = ColorTranslator.FromHtml("#" + hex);
+                        loadingFlowGen = true;
                     }
 
                     // Flow işareti
@@ -183,16 +186,21 @@ namespace FlowGen
                     if (commentMatch.Success)
                         currentComment = commentMatch.Groups[1].Value;
 
-                    // Grid'e boş bir satır olarak ekle
-                    var metaRow = AddGridRow(new Dictionary<ColumnKey, string>());
-                    if (currentColor != null)
-                        metaRow.DefaultCellStyle.ForeColor = currentColor.Value;
+
+                    if (line.EndsWith("{"))
+                    {
+                        var metaRow = AddGridRow(new Dictionary<ColumnKey, string>()); // Grid'e boş bir satır olarak ekle
+                        if (currentColor != null)
+                            dataGridView1.Rows[metaRow.Index].DefaultCellStyle.ForeColor = currentColor.Value;
+                    }
+
+
 
                     continue; // satır veri satırı değil, atla
                 }
 
                 // RETURN sonrası işaretleme
-                if (afterReturn && checkBox4.Checked)
+                if (afterReturn && checkBox4.Checked && !loadingFlowGen)
                 {
                     // Rastgele ama okunabilir renk
                     currentColor = GetRandomLightColor();
@@ -215,12 +223,11 @@ namespace FlowGen
                 {
                     char c = line[i];
 
-                    if (c == '"')
-                        insideQuotes = !insideQuotes;
+                    if (c == '"') insideQuotes = !insideQuotes;
 
                     if (c == ':' && !insideQuotes)
                     {
-                        statements.Add(current.ToString().Trim());
+                        if (current.ToString().Trim().Length > 0) statements.Add(current.ToString().Trim());
                         current.Clear();
                     }
                     else
@@ -236,20 +243,26 @@ namespace FlowGen
                 if (statements.Count > 0)
                 {
                     var match = Regex.Match(statements[0], @"^(\d+)\s*(.*)");
-                    string lineNum = match.Success ? match.Groups[1].Value : "";
+                    string lineNum = "";
+                    if (match.Success)
+                    {
+                        lineNum = match.Groups[1].Value;
+                    }
+
                     string command = match.Success ? match.Groups[2].Value : statements[0];
 
                     var row = AddGridRow(new Dictionary<ColumnKey, string>
-            {
-                { ColumnKey.FlowMarker, currentFlow },
-                { ColumnKey.LineNumber, lineNum },
-                { ColumnKey.Command, command },
-                { ColumnKey.FunctionName, currentFunc },
-                { ColumnKey.Comment, currentComment }
-            });
+                    {
+                        { ColumnKey.FlowMarker, currentFlow },
+                        { ColumnKey.LineNumber, lineNum },
+                        { ColumnKey.Command, command },
+                        { ColumnKey.FunctionName, currentFunc },
+                        { ColumnKey.Comment, currentComment }
+                    });
 
                     if (currentColor != null)
-                        row.DefaultCellStyle.ForeColor = currentColor.Value;
+                        dataGridView1.Rows[row.Index].DefaultCellStyle.ForeColor = currentColor.Value;
+                    //row.DefaultCellStyle.ForeColor = currentColor.Value;
 
                     if (command.ToLower().Contains("return"))
                         if (ContainsKeywordOutsideQuotes(command, "return")) afterReturn = true;
@@ -265,7 +278,7 @@ namespace FlowGen
 
                     var subRow = AddGridRow(new Dictionary<ColumnKey, string>
             {
-                
+
                 { ColumnKey.Command, sub },
                 { ColumnKey.FunctionName, currentFunc },
                 { ColumnKey.Comment, currentComment }
@@ -329,6 +342,8 @@ namespace FlowGen
             }
 
             int rowIndex = dataGridView1.Rows.Add(cells);
+            //System.Diagnostics.Debug.WriteLine(data[ColumnKey.Command]);
+
             return dataGridView1.Rows[rowIndex];
         }
 
@@ -504,7 +519,7 @@ namespace FlowGen
 
 
 
-                    if (!found) { MessageBox.Show("Satır bulunamadı.", callerRef, MessageBoxButtons.OK, MessageBoxIcon.Information); } 
+                    if (!found) { MessageBox.Show("Satır bulunamadı.", callerRef, MessageBoxButtons.OK, MessageBoxIcon.Information); }
                 }
             }
         }
@@ -516,7 +531,7 @@ namespace FlowGen
             dataGridView1.Rows[rowIndex].Cells[ColumnMap[key]].Value = value;
         }
 
-        
+
 
 
         private void button2_Click(object sender, EventArgs e)
@@ -647,12 +662,12 @@ namespace FlowGen
             // Eğer hiç eklenmemişse boş gösterim
             if (!added)
             {
-                var refItem = new ToolStripMenuItem("(No references)") 
+                var refItem = new ToolStripMenuItem("(No references)")
                 {
                     Tag = $"jump:0:0",
-                    Enabled = false 
+                    Enabled = false
                 };
-                contextMenuStrip1.Items.Add(refItem );
+                contextMenuStrip1.Items.Add(refItem);
             }
         }
 
@@ -717,7 +732,7 @@ namespace FlowGen
         {
             if (dataGridView1.SelectedCells.Count == 0)
             {
-                MessageBox.Show("Lütfen renk değiştirmek için hücre(ler) seçin.", "Yazı Rengi", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show("Pick some cells first.", "Text Color", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
 
@@ -732,7 +747,10 @@ namespace FlowGen
 
             foreach (DataGridViewCell cell in dataGridView1.SelectedCells)
             {
-                cell.Style.ForeColor = cd.Color;
+                //cell.Style.ForeColor = cd.Color;
+                dataGridView1.Rows[cell.RowIndex].DefaultCellStyle.ForeColor = cd.Color;
+
+
             }
         }
 
@@ -762,7 +780,7 @@ namespace FlowGen
         {
             if (dataGridView1.SelectedRows.Count == 0)
             {
-                MessageBox.Show("Lütfen en az bir satır seçin.", "Uyarı", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show("Select at least one line", "Wake up", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
@@ -795,7 +813,7 @@ namespace FlowGen
             lines.Reverse(); // çünkü SelectedRows sondan başa sıralı gelir
 
             File.WriteAllLines(sfd.FileName, lines);
-            MessageBox.Show("Dosya dışa aktarıldı.", "Export", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            MessageBox.Show("File Exported successfully.", "Export", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 
 
@@ -804,7 +822,7 @@ namespace FlowGen
         {
             if (dataGridView1.SelectedRows.Count == 0)
             {
-                MessageBox.Show("Kopyalanacak satır yok.", "Kopyala", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show("Select some rows first", "Copy", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
 
@@ -832,7 +850,7 @@ namespace FlowGen
             if (sb.Length > 0)
             {
                 Clipboard.SetText(sb.ToString());
-                MessageBox.Show("Seçim panoya kopyalandı.", "Kopyala", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                //MessageBox.Show("Seçim panoya kopyalandı.", "Kopyala", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
         }
         private void PasteToGridSelection()
@@ -841,7 +859,7 @@ namespace FlowGen
 
             if (string.IsNullOrWhiteSpace(clipText))
             {
-                MessageBox.Show("Panoda metin bulunamadı.", "Yapıştır", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show("Clipboard is empty!", "Oh no!", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
@@ -852,7 +870,7 @@ namespace FlowGen
 
             if (selected.Count == 0)
             {
-                MessageBox.Show("Lütfen yapıştırmak için satır(lar) seçin.", "Yapıştır", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show("Select some rows to paste into.", "Paste", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
@@ -889,8 +907,6 @@ namespace FlowGen
                 SetCell(selected[i].Index, ColumnKey.LineNumber, lineNumber);
                 SetCell(selected[i].Index, ColumnKey.Command, command);
             }
-
-            MessageBox.Show($"Yapıştırıldı: {pasteCount} satır", "Yapıştır", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 
 
@@ -898,7 +914,7 @@ namespace FlowGen
         {
             if (dataGridView1.SelectedRows.Count == 0)
             {
-                MessageBox.Show("Kesilecek satır yok.", "Kes", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show("Nothing to cut.", "Pala", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
 
@@ -915,14 +931,14 @@ namespace FlowGen
                 SetCell(row.Index, ColumnKey.Command, "");
             }
 
-            MessageBox.Show("Satırlar kesildi.", "Kes", MessageBoxButtons.OK, MessageBoxIcon.Information);
+
         }
 
         private void addGridDescription()
         {
             if (dataGridView1.SelectedRows.Count < 2)
             {
-                MessageBox.Show("Lütfen en az iki ardışık satır seçin.", "Fonksiyon Etiketi", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show("Select a continous range of rows first.", "Describe function", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
@@ -936,13 +952,13 @@ namespace FlowGen
             {
                 if (selected[i].Index != selected[i - 1].Index + 1)
                 {
-                    MessageBox.Show("Seçilen satırlar ardışık olmalı (boşluk olmamalı).", "Hata", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    MessageBox.Show("Needs continous range of rows.", "Why you!?", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     return;
                 }
             }
 
             string funcName = Microsoft.VisualBasic.Interaction.InputBox(
-                "Fonksiyon adı girin:", "Fonksiyon Etiketi", "");
+                "Enter short function name/description:", "Tag range", "");
 
             if (string.IsNullOrWhiteSpace(funcName))
                 return;
@@ -962,7 +978,6 @@ namespace FlowGen
                 SetCell(rowIndex, ColumnKey.FunctionName, funcName);
             }
 
-            MessageBox.Show("Fonksiyon bloğu etiketlendi.", "Tamam", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 
         private Color GetRandomLightColor()
@@ -974,7 +989,106 @@ namespace FlowGen
             return Color.FromArgb(r, g, b);
         }
 
-        private void ExportToFile()
+
+        private void ExportFullText(string filename)
+        {
+            int colFlow = 2;
+            int colLine = 6;
+            int colCommand = 40;
+            int colIncoming = 32;
+            int colFunction = 32;
+            int colComment = 32;
+
+            List<string> lines = new();
+
+            for (int i = 0; i < dataGridView1.Rows.Count; i++)
+            {
+                string flow = GetCell(i, ColumnKey.FlowMarker);
+                string lineNum = GetCell(i, ColumnKey.LineNumber);
+                string command = GetCell(i, ColumnKey.Command);
+                string incoming = GetCell(i, ColumnKey.IncomingRefs);
+                string function = GetCell(i, ColumnKey.FunctionName);
+                string comment = GetCell(i, ColumnKey.Comment);
+
+                List<string> flowParts = WrapText(flow, colFlow);
+                List<string> lineParts = WrapText(lineNum, colLine);
+                List<string> commandParts = WrapText(command, colCommand);
+                List<string> incomingParts = WrapText(incoming, colIncoming);
+                List<string> functionParts = WrapText(function, colFunction);
+                List<string> commentParts = WrapText(comment, colComment);
+
+                int maxLines = new[] {
+            flowParts.Count,
+            lineParts.Count,
+            commandParts.Count,
+            incomingParts.Count,
+            functionParts.Count,
+            commentParts.Count
+        }.Max();
+
+                for (int l = 0; l < maxLines; l++)
+                {
+                    string f =  l < flowParts.Count ? flowParts[l] : "|";
+                    string ln = l < lineParts.Count ? lineParts[l] : "";
+                    string cmd = l < commandParts.Count ? commandParts[l] : "";
+                    string inc = l < incomingParts.Count ? incomingParts[l] : "";
+                    string fn = l < functionParts.Count ? functionParts[l] : "";
+                    string com = l < commentParts.Count ? commentParts[l] : "";
+
+                    // LineNo logic
+                    if (l == 0)
+                    {
+                        string mark = ":";
+                        if (string.IsNullOrWhiteSpace(command)) mark = "";
+                        ln = string.IsNullOrWhiteSpace(lineNum) ? mark.PadRight(colLine) : ln;
+                    }
+                    else
+                    {
+                        ln = "".PadRight(colLine);
+                    }
+
+                    // Flow logic
+                    if (!string.IsNullOrWhiteSpace(flow))
+                        f = f.PadRight(colFlow);
+                    else
+                        f = "".PadRight(colFlow);
+
+                    string line = f +
+                                  ln.PadRight(colLine) +
+                                  cmd.PadRight(colCommand) +
+                                  inc.Trim().PadRight(colIncoming) +
+                                  fn.PadRight(colFunction) +
+                                  com.PadRight(colComment);
+
+                    lines.Add(line);
+                }
+
+                // Satır sonu
+                //lines.Add("");
+            }
+
+            File.WriteAllLines(filename, lines);
+        }
+
+        private List<string> WrapText(string text, int maxWidth)
+        {
+            List<string> result = new();
+            if (string.IsNullOrEmpty(text))
+            {
+                result.Add("");
+                return result;
+            }
+
+            for (int i = 0; i < text.Length; i += maxWidth)
+            {
+                int len = Math.Min(maxWidth, text.Length - i);
+                result.Add(text.Substring(i, len));
+            }
+
+            return result;
+        }
+
+        private void ExportToText()
         {
             using SaveFileDialog sfd = new SaveFileDialog
             {
@@ -1012,8 +1126,34 @@ namespace FlowGen
 
                 if (!string.IsNullOrEmpty(currentLine))
                     output.Add(currentLine);
+
+                File.WriteAllLines(sfd.FileName, output);
+                MessageBox.Show("Exported.", "Yeah!", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
             else
+            {
+                ExportFullText(sfd.FileName);
+            }
+
+
+
+        }
+
+
+        private void ExportToFile()
+        {
+            using SaveFileDialog sfd = new SaveFileDialog
+            {
+                Filter = "Flowgen Project Text Files (*.fgn)|*.fgn|All Files (*.*)|*.*",
+                FileName = "exported_project.fgn"
+            };
+
+            if (sfd.ShowDialog() != DialogResult.OK)
+                return;
+
+            var output = new List<string>();
+
+
             {
                 // Mod 2: Meta destekli gelişmiş export
                 Color? lastColor = null;
@@ -1084,7 +1224,7 @@ namespace FlowGen
             }
 
             File.WriteAllLines(sfd.FileName, output);
-            MessageBox.Show("Dosya dışa aktarıldı.", "Export", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            MessageBox.Show("Exported.", "Yeah!", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 
 
@@ -1117,5 +1257,9 @@ namespace FlowGen
             }
         }
 
+        private void button4_Click(object sender, EventArgs e)
+        {
+            ExportToText();
+        }
     }
 }

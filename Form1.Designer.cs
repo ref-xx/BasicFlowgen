@@ -29,6 +29,7 @@
         private void InitializeComponent()
         {
             components = new System.ComponentModel.Container();
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(Form1));
             button1 = new Button();
             listBox2 = new ListBox();
             textBox1 = new TextBox();
@@ -52,6 +53,7 @@
             checkBox2 = new CheckBox();
             checkBox3 = new CheckBox();
             groupBox1 = new GroupBox();
+            button4 = new Button();
             dataGridView1 = new DataGridView();
             checkBox4 = new CheckBox();
             contextMenuStrip1.SuspendLayout();
@@ -210,7 +212,7 @@
             // label1
             // 
             label1.AutoSize = true;
-            label1.Location = new Point(575, 22);
+            label1.Location = new Point(512, 23);
             label1.Name = "label1";
             label1.Size = new Size(234, 15);
             label1.TabIndex = 7;
@@ -219,11 +221,11 @@
             // button3
             // 
             button3.Anchor = AnchorStyles.Top | AnchorStyles.Right;
-            button3.Location = new Point(274, 16);
+            button3.Location = new Point(316, 16);
             button3.Name = "button3";
-            button3.Size = new Size(75, 23);
+            button3.Size = new Size(124, 23);
             button3.TabIndex = 8;
-            button3.Text = "Save...";
+            button3.Text = "Save Project...";
             button3.UseVisualStyleBackColor = true;
             button3.Click += button3_Click;
             // 
@@ -232,7 +234,7 @@
             checkBox2.AutoSize = true;
             checkBox2.Checked = true;
             checkBox2.CheckState = CheckState.Checked;
-            checkBox2.Location = new Point(113, 18);
+            checkBox2.Location = new Point(153, 18);
             checkBox2.Name = "checkBox2";
             checkBox2.Size = new Size(136, 19);
             checkBox2.TabIndex = 9;
@@ -243,26 +245,36 @@
             // checkBox3
             // 
             checkBox3.AutoSize = true;
-            checkBox3.Checked = true;
-            checkBox3.CheckState = CheckState.Checked;
             checkBox3.Location = new Point(14, 18);
             checkBox3.Name = "checkBox3";
-            checkBox3.Size = new Size(93, 19);
+            checkBox3.Size = new Size(142, 19);
             checkBox3.TabIndex = 10;
-            checkBox3.Text = "Merge : lines";
+            checkBox3.Text = "Export as plain bas file";
             checkBox3.UseVisualStyleBackColor = true;
             // 
             // groupBox1
             // 
             groupBox1.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            groupBox1.Controls.Add(button4);
             groupBox1.Controls.Add(checkBox3);
             groupBox1.Controls.Add(checkBox2);
             groupBox1.Controls.Add(button3);
-            groupBox1.Location = new Point(862, -3);
+            groupBox1.Location = new Point(771, -3);
             groupBox1.Name = "groupBox1";
-            groupBox1.Size = new Size(369, 45);
+            groupBox1.Size = new Size(460, 45);
             groupBox1.TabIndex = 11;
             groupBox1.TabStop = false;
+            // 
+            // button4
+            // 
+            button4.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            button4.Location = new Point(164, 16);
+            button4.Name = "button4";
+            button4.Size = new Size(124, 23);
+            button4.TabIndex = 11;
+            button4.Text = "Export as Txt...";
+            button4.UseVisualStyleBackColor = true;
+            button4.Click += button4_Click;
             // 
             // dataGridView1
             // 
@@ -300,6 +312,7 @@
             Controls.Add(textBox1);
             Controls.Add(listBox2);
             Controls.Add(button1);
+            Icon = (Icon)resources.GetObject("$this.Icon");
             Name = "Form1";
             Text = "FlowGen";
             contextMenuStrip1.ResumeLayout(false);
@@ -337,5 +350,6 @@
         private DataGridView dataGridView1;
         private ToolStripMenuItem pickColorToolStripMenuItem;
         private CheckBox checkBox4;
+        private Button button4;
     }
 }
