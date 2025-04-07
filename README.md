@@ -2,5 +2,8 @@ Flowgen - as part of the PirateZX project, this little tool is created to unders
 
 Basicly marks GO TO, GO SUB and RETURN keywords and targets for easy navigation, editing and commenting. 
 
+To view flowgen generated fgn files just download binaries from releases 
+
+for example flowgen files
 see. https://github.com/ref-xx/PiratesZX
 
