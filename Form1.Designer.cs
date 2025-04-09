@@ -315,6 +315,7 @@
             Icon = (Icon)resources.GetObject("$this.Icon");
             Name = "Form1";
             Text = "FlowGen";
+            FormClosing += Form1_FormClosing;
             contextMenuStrip1.ResumeLayout(false);
             groupBox1.ResumeLayout(false);
             groupBox1.PerformLayout();

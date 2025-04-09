@@ -87,7 +87,7 @@ namespace FlowGen
 
             using (OpenFileDialog openFileDialog = new OpenFileDialog())
             {
-                openFileDialog.Filter = "BASIC veya metin dosyaları (*.bas;*.txt)|*.bas;*.txt|Tüm dosyalar (*.*)|*.*";
+                openFileDialog.Filter = "BASIC veya metin dosyaları (*.bas;*.txt;*.fgn)|*.bas;*.txt;*.fgn|Tüm dosyalar (*.*)|*.*";
                 openFileDialog.Title = "BASIC Dosyası Aç";
 
                 if (openFileDialog.ShowDialog() == DialogResult.OK)
@@ -95,6 +95,7 @@ namespace FlowGen
                     LineSplit(openFileDialog.FileName);
                     AnalyzeJumps();
                     AddSeparators();
+                    this.Text = "FlowGen - " + openFileDialog.SafeFileName;
 
                 }
             }
@@ -685,7 +686,20 @@ namespace FlowGen
             }
         }
 
+        private void SetChanged()
+        {
+            button3.BackColor = Color.Gold;
+        }
 
+        private void SetUnchanged()
+        {
+            button3.BackColor = SystemColors.ButtonFace;
+        }
+
+        private bool CheckChanged()
+        {
+            return (button3.BackColor == Color.Gold);
+        }
 
         private void GeneralMenuItem_Click(object sender, EventArgs e)
         {
@@ -752,6 +766,7 @@ namespace FlowGen
 
 
             }
+            SetChanged();
         }
 
 
@@ -773,6 +788,7 @@ namespace FlowGen
             dataGridView1.ClearSelection();
             dataGridView1.Rows[insertIndex].Selected = true;
             //dataGridView1.FirstDisplayedScrollingRowIndex = Math.Max(0, insertIndex - 2);
+            SetChanged();
         }
 
 
@@ -906,6 +922,7 @@ namespace FlowGen
 
                 SetCell(selected[i].Index, ColumnKey.LineNumber, lineNumber);
                 SetCell(selected[i].Index, ColumnKey.Command, command);
+                SetChanged();
             }
         }
 
@@ -930,13 +947,13 @@ namespace FlowGen
                 SetCell(row.Index, ColumnKey.LineNumber, "");
                 SetCell(row.Index, ColumnKey.Command, "");
             }
-
+            SetChanged();
 
         }
 
         private void addGridDescription()
         {
-            if (dataGridView1.SelectedRows.Count < 2)
+            if (dataGridView1.SelectedRows.Count < 0)
             {
                 MessageBox.Show("Select a continous range of rows first.", "Describe function", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
@@ -977,7 +994,7 @@ namespace FlowGen
                 SetCell(rowIndex, ColumnKey.FlowMarker, marker);
                 SetCell(rowIndex, ColumnKey.FunctionName, funcName);
             }
-
+            SetChanged();
         }
 
         private Color GetRandomLightColor()
@@ -1028,7 +1045,7 @@ namespace FlowGen
 
                 for (int l = 0; l < maxLines; l++)
                 {
-                    string f =  l < flowParts.Count ? flowParts[l] : "|";
+                    string f = l < flowParts.Count ? flowParts[l] : "|";
                     string ln = l < lineParts.Count ? lineParts[l] : "";
                     string cmd = l < commandParts.Count ? commandParts[l] : "";
                     string inc = l < incomingParts.Count ? incomingParts[l] : "";
@@ -1237,6 +1254,8 @@ namespace FlowGen
         private void button3_Click(object sender, EventArgs e)
         {
             ExportToFile();
+            SetUnchanged();
+
         }
 
         private void dataGridView1_MouseClick(object sender, MouseEventArgs e)
@@ -1260,6 +1279,31 @@ namespace FlowGen
         private void button4_Click(object sender, EventArgs e)
         {
             ExportToText();
+        }
+
+        private void Form1_FormClosing(object sender, FormClosingEventArgs e)
+        {
+            if (CheckChanged())
+            {
+                var result = MessageBox.Show(
+                    "The file has been modified. Do you still want to close the window?",
+                    "Confirm Close",
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Warning,
+                    MessageBoxDefaultButton.Button2
+                );
+
+                if (result == DialogResult.Yes)
+                {
+                    // Kapat
+                }
+                else
+                {
+                    // Vazgeç
+                    e.Cancel = true;
+                }
+
+            }
         }
     }
 }
