@@ -48,7 +48,6 @@
             exportToolStripMenuItem = new ToolStripMenuItem();
             toolStripMenuItem3 = new ToolStripSeparator();
             followGotoToolStripMenuItem = new ToolStripMenuItem();
-            label1 = new Label();
             button3 = new Button();
             checkBox2 = new CheckBox();
             checkBox3 = new CheckBox();
@@ -56,6 +55,9 @@
             button4 = new Button();
             dataGridView1 = new DataGridView();
             checkBox4 = new CheckBox();
+            button5 = new Button();
+            button6 = new Button();
+            button7 = new Button();
             contextMenuStrip1.SuspendLayout();
             groupBox1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)dataGridView1).BeginInit();
@@ -76,11 +78,10 @@
             listBox2.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left;
             listBox2.FormattingEnabled = true;
             listBox2.ItemHeight = 15;
-            listBox2.Location = new Point(512, 6);
+            listBox2.Location = new Point(731, 8);
             listBox2.Name = "listBox2";
             listBox2.Size = new Size(75, 34);
             listBox2.TabIndex = 3;
-            listBox2.Visible = false;
             listBox2.SelectedIndexChanged += listBox2_SelectedIndexChanged;
             // 
             // textBox1
@@ -209,19 +210,10 @@
             followGotoToolStripMenuItem.Visible = false;
             followGotoToolStripMenuItem.Click += GeneralMenuItem_Click;
             // 
-            // label1
-            // 
-            label1.AutoSize = true;
-            label1.Location = new Point(512, 23);
-            label1.Name = "label1";
-            label1.Size = new Size(234, 15);
-            label1.TabIndex = 7;
-            label1.Text = "Alt+click to follow |  Right Click for Actions";
-            // 
             // button3
             // 
             button3.Anchor = AnchorStyles.Top | AnchorStyles.Right;
-            button3.Location = new Point(316, 16);
+            button3.Location = new Point(275, 16);
             button3.Name = "button3";
             button3.Size = new Size(124, 23);
             button3.TabIndex = 8;
@@ -245,7 +237,7 @@
             // checkBox3
             // 
             checkBox3.AutoSize = true;
-            checkBox3.Location = new Point(14, 18);
+            checkBox3.Location = new Point(6, 18);
             checkBox3.Name = "checkBox3";
             checkBox3.Size = new Size(142, 19);
             checkBox3.TabIndex = 10;
@@ -259,16 +251,16 @@
             groupBox1.Controls.Add(checkBox3);
             groupBox1.Controls.Add(checkBox2);
             groupBox1.Controls.Add(button3);
-            groupBox1.Location = new Point(771, -3);
+            groupBox1.Location = new Point(812, -3);
             groupBox1.Name = "groupBox1";
-            groupBox1.Size = new Size(460, 45);
+            groupBox1.Size = new Size(419, 45);
             groupBox1.TabIndex = 11;
             groupBox1.TabStop = false;
             // 
             // button4
             // 
             button4.Anchor = AnchorStyles.Top | AnchorStyles.Right;
-            button4.Location = new Point(164, 16);
+            button4.Location = new Point(145, 16);
             button4.Name = "button4";
             button4.Size = new Size(124, 23);
             button4.TabIndex = 11;
@@ -298,15 +290,47 @@
             checkBox4.Text = "AutoColor";
             checkBox4.UseVisualStyleBackColor = true;
             // 
+            // button5
+            // 
+            button5.Location = new Point(569, 19);
+            button5.Name = "button5";
+            button5.Size = new Size(75, 23);
+            button5.TabIndex = 15;
+            button5.Text = "Step";
+            button5.UseVisualStyleBackColor = true;
+            button5.Click += button5_Click;
+            // 
+            // button6
+            // 
+            button6.Location = new Point(650, 19);
+            button6.Name = "button6";
+            button6.Size = new Size(75, 23);
+            button6.TabIndex = 16;
+            button6.Text = "Return";
+            button6.UseVisualStyleBackColor = true;
+            button6.Click += button6_Click;
+            // 
+            // button7
+            // 
+            button7.Location = new Point(512, 17);
+            button7.Name = "button7";
+            button7.Size = new Size(51, 23);
+            button7.TabIndex = 17;
+            button7.Text = "Vars";
+            button7.UseVisualStyleBackColor = true;
+            button7.Click += button7_Click;
+            // 
             // Form1
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(1243, 499);
+            Controls.Add(button7);
+            Controls.Add(button6);
+            Controls.Add(button5);
             Controls.Add(checkBox4);
             Controls.Add(dataGridView1);
             Controls.Add(groupBox1);
-            Controls.Add(label1);
             Controls.Add(checkBox1);
             Controls.Add(button2);
             Controls.Add(textBox1);
@@ -341,7 +365,6 @@
         private ToolStripMenuItem addDescriptionToolStripMenuItem;
         private ToolStripSeparator toolStripMenuItem2;
         private ToolStripSeparator toolStripMenuItem1;
-        private Label label1;
         private ToolStripSeparator toolStripMenuItem3;
         private ToolStripMenuItem followGotoToolStripMenuItem;
         private Button button3;
@@ -352,5 +375,8 @@
         private ToolStripMenuItem pickColorToolStripMenuItem;
         private CheckBox checkBox4;
         private Button button4;
+        private Button button5;
+        private Button button6;
+        private Button button7;
     }
 }

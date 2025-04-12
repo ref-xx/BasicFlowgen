@@ -2,11 +2,14 @@
 using System.Security.Cryptography.Xml;
 using System.Text;
 using System.Text.RegularExpressions;
+using NCalc;
 
 namespace FlowGen
 {
     public partial class Form1 : Form
     {
+
+
         public enum ColumnKey
         {
             FlowMarker,     // akış işareti →, ⏹️, ↩ vb.
@@ -16,6 +19,8 @@ namespace FlowGen
             FunctionName,   // varsa: “InitMap”, “GameLoop” gibi tanım
             Comment         // el ile yazılmış yorumlar
         }
+
+        Dictionary<string, double> variableStore = new(); // global değişken listesi
 
         private Dictionary<ColumnKey, int> ColumnMap;
         private void InitGridColumns()
@@ -96,6 +101,7 @@ namespace FlowGen
                     AnalyzeJumps();
                     AddSeparators();
                     this.Text = "FlowGen - " + openFileDialog.SafeFileName;
+                    listBox2.Items.Clear();
 
                 }
             }
@@ -127,7 +133,8 @@ namespace FlowGen
 
                     dataGridView1.ClearSelection();
                     dataGridView1.Rows[jumpIndex].Selected = true;
-                    dataGridView1.FirstDisplayedScrollingRowIndex = i;
+                    //dataGridView1.FirstDisplayedScrollingRowIndex = i; //dataGridView1.FirstDisplayedScrollingRowIndex = Math.Max(0, i - 2);
+                    dataGridView1.FirstDisplayedScrollingRowIndex = Math.Max(0, i - 2);
                     break;
                 }
             }
@@ -1304,6 +1311,206 @@ namespace FlowGen
                 }
 
             }
+        }
+
+        private void button5_Click(object sender, EventArgs e)
+        {
+            int insertIndex = dataGridView1.SelectedCells.Count > 0
+                ? dataGridView1.SelectedCells[0].RowIndex
+                : -1;
+            if (insertIndex >= 0) Step(insertIndex);
+        }
+
+        private void Step(int index)
+        {
+            if (index < 0 || index >= dataGridView1.Rows.Count)
+                return;
+
+            var row = dataGridView1.Rows[index];
+            string command = GetCell(index, ColumnKey.Command).ToLower().Trim();
+            string lineNum = GetCell(index, ColumnKey.LineNumber).Trim();
+
+            // statement index belirle
+            int statementIndex = 0;
+            if (string.IsNullOrEmpty(lineNum))
+            {
+                for (int j = index - 1; j >= 0; j--)
+                {
+                    if (!string.IsNullOrEmpty(GetCell(j, ColumnKey.LineNumber)))
+                        break;
+                    statementIndex++;
+                }
+                statementIndex++; // 1-based
+                                  // lineNum'ı bulalım
+                for (int j = index - 1; j >= 0; j--)
+                {
+                    string prev = GetCell(j, ColumnKey.LineNumber);
+                    if (!string.IsNullOrEmpty(prev))
+                    {
+                        lineNum = prev;
+                        break;
+                    }
+                }
+            }
+
+            string callerRef = $"{lineNum}:{statementIndex}";
+
+            // RETURN: listBox2'den geri dön
+            if (command == "return" || command.Contains("return"))
+            {
+                if (listBox2.Items.Count > 0)
+                {
+                    string refStr = listBox2.Items[listBox2.Items.Count - 1].ToString();
+                    listBox2.Items.RemoveAt(listBox2.Items.Count - 1);
+
+                    var parts = refStr.Split(':');
+                    if (parts.Length == 2 &&
+                        int.TryParse(parts[0], out int targetLine) &&
+                        int.TryParse(parts[1], out int statementIdx))
+                    {
+                        JumpToLine(targetLine.ToString(), (statementIdx + 1).ToString());
+                    }
+                }
+                return;
+            }
+
+            // GOTO veya GOSUB
+            var jumpMatch = Regex.Match(command, @"\b(go\s*to|goto|gosub|go\s*sub)\s+(\d+)\b");
+            if (jumpMatch.Success)
+            {
+                string keyword = jumpMatch.Groups[1].Value;
+                string targetLine = jumpMatch.Groups[2].Value;
+
+                if (keyword.Contains("gosub"))
+                {
+                    listBox2.Items.Add(callerRef); // Stack push
+                }
+
+                JumpToLine(targetLine, "0");
+                return;
+            }
+
+            // Diğer komutlarda bir şey yapılmaz (şimdilik)
+
+            var assignMatch = Regex.Match(command, @"^([a-z][a-z0-9]*)\s*=\s*(.+)$", RegexOptions.IgnoreCase);
+            if (assignMatch.Success)
+            {
+                string varName = assignMatch.Groups[1].Value.Trim();
+                string expr = assignMatch.Groups[2].Value.Trim();
+                cmdLet(varName, expr);
+            }
+
+
+            int next = index + 1;
+            if (next < dataGridView1.Rows.Count)
+            {
+                dataGridView1.ClearSelection();
+                dataGridView1.Rows[next].Selected = true;
+                dataGridView1.CurrentCell = dataGridView1.Rows[next].Cells[ColumnMap[ColumnKey.Command]];
+                dataGridView1.FirstDisplayedScrollingRowIndex = Math.Max(0, next - 2);
+            }
+        }
+
+        private void button6_Click(object sender, EventArgs e)
+        {
+            if (listBox2.Items.Count > 0)
+            {
+                string refStr = listBox2.Items[listBox2.Items.Count - 1].ToString();
+                listBox2.Items.RemoveAt(listBox2.Items.Count - 1);
+
+                var parts = refStr.Split(':');
+                if (parts.Length == 2 &&
+                    int.TryParse(parts[0], out int targetLine) &&
+                    int.TryParse(parts[1], out int statementIdx))
+                {
+                    JumpToLine(targetLine.ToString(), (statementIdx + 1).ToString());
+                }
+            }
+        }
+
+
+        private void cmdLet(string variable, string expression)
+        {
+            try
+            {
+                var evaluator = new NCalc.Expression(expression);
+
+                // NCalc'a mevcut değişkenleri tanıt
+                foreach (var kvp in variableStore)
+                {
+                    evaluator.Parameters[kvp.Key] = kvp.Value;
+                }
+
+                var result = evaluator.Evaluate();
+
+                if (result is double d)
+                    variableStore[variable] = d;
+                else if (result is int i)
+                    variableStore[variable] = i;
+
+                if (variableWindow == null) showVars();
+                UpdateVariableListBox();
+
+
+            }
+            catch
+            {
+                // ifade çözülemezse yok say
+            }
+        }
+
+        private Form variableWindow = null;
+        private ListBox variableListBox = null;
+        private void showVars()
+        {
+            if (variableWindow == null || variableWindow.IsDisposed)
+            {
+                variableWindow = new Form
+                {
+                    Text = "Variables",
+                    Width = 300,
+                    Height = 400
+                };
+
+                variableListBox = new ListBox
+                {
+                    Dock = DockStyle.Fill,
+                    Font = new Font("Consolas", 10)
+                };
+
+                variableWindow.Controls.Add(variableListBox);
+                variableListBox.MouseUp += VariableListBox_MouseUp;
+
+            }
+
+            UpdateVariableListBox();
+            variableWindow.Show();
+            variableWindow.BringToFront();
+        }
+        private void UpdateVariableListBox()
+        {
+            if (variableListBox == null) return;
+
+            variableListBox.Items.Clear();
+            foreach (var kvp in variableStore.OrderBy(k => k.Key))
+            {
+                variableListBox.Items.Add($"{kvp.Key} = {kvp.Value}");
+            }
+        }
+        private void VariableListBox_MouseUp(object sender, MouseEventArgs e)
+        {
+            if (e.Button == MouseButtons.Right)
+            {
+                var lines = variableListBox.Items.Cast<string>().ToArray();
+                Clipboard.SetText(string.Join(Environment.NewLine, lines));
+                MessageBox.Show("Variables copied to clipboard.", "Copied", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+        }
+
+
+        private void button7_Click(object sender, EventArgs e)
+        {
+            showVars();
         }
     }
 }
