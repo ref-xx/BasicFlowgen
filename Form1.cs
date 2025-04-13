@@ -30,7 +30,7 @@ namespace FlowGen
 
             AddGridColumn(ColumnKey.FlowMarker, "", 40, false);
             AddGridColumn(ColumnKey.LineNumber, "Line", 60, false);
-            AddGridColumn(ColumnKey.Command, "Command", 400, false);
+            AddGridColumn(ColumnKey.Command, "Statement", 400, false);
             AddGridColumn(ColumnKey.IncomingRefs, "← From", 300, false);
             AddGridColumn(ColumnKey.FunctionName, "Function", 120, true);
             AddGridColumn(ColumnKey.Comment, "Comment", 200, true);
@@ -140,6 +140,23 @@ namespace FlowGen
             }
         }
 
+        private string TrimStartTab(string input)
+        {
+            int index = 0;
+            string preservedTabs = "";
+            while (index < input.Length)
+            {
+                char c = input[index];
+                if (c == '\t') preservedTabs += c;
+                else if (!Char.IsWhiteSpace(c)) break;
+                
+                index++;
+            }
+
+            // Geriye kalan kısmı döndür, ama baştaki \t'leri koru
+           
+            return preservedTabs + input.Trim();
+        }
 
 
         private void LineSplit(string filename)
@@ -235,8 +252,11 @@ namespace FlowGen
 
                     if (c == ':' && !insideQuotes)
                     {
-                        if (current.ToString().Trim().Length > 0) statements.Add(current.ToString().Trim());
-                        current.Clear();
+                        if (current.ToString().Trim().Length > 0)
+                        {
+                            statements.Add(TrimStartTab(current.ToString()));
+                        }
+                            current.Clear();
                     }
                     else
                     {
@@ -245,12 +265,13 @@ namespace FlowGen
                 }
 
                 if (current.Length > 0)
-                    statements.Add(current.ToString().Trim());
+                    statements.Add(TrimStartTab(current.ToString()));
 
                 // Ana satır
                 if (statements.Count > 0)
                 {
-                    var match = Regex.Match(statements[0], @"^(\d+)\s*(.*)");
+                    var match = Regex.Match(statements[0], @"^(\d+)(.*)"); // @"^(\d+)\s*(.*)");
+
                     string lineNum = "";
                     if (match.Success)
                     {
@@ -258,12 +279,12 @@ namespace FlowGen
                     }
 
                     string command = match.Success ? match.Groups[2].Value : statements[0];
-
+                    command=TrimStartTab(command);
                     var row = AddGridRow(new Dictionary<ColumnKey, string>
                     {
                         { ColumnKey.FlowMarker, currentFlow },
                         { ColumnKey.LineNumber, lineNum },
-                        { ColumnKey.Command, command },
+                        { ColumnKey.Command, command.Replace("\t", "   ") },
                         { ColumnKey.FunctionName, currentFunc },
                         { ColumnKey.Comment, currentComment }
                     });
@@ -714,6 +735,9 @@ namespace FlowGen
             {
                 switch (tag)
                 {
+                    case 1:
+                        editStatement();
+                        break;
                     case 2: // Add empty line
                         AddEmptyGridLine();
                         break;
@@ -742,12 +766,106 @@ namespace FlowGen
                         changeGridSelection();
                         break;
 
+                    case 12: // remove lines
+                        RemoveSelectedLines();
+                        break;
+
+                    case 13: //indent
+                        IndentSelectedStatements(true);
+                        break;
+                    case 14: //un-indent
+                        IndentSelectedStatements(false);
+                        break;
                     default:
                         MessageBox.Show("Unknown Selection");
                         break;
                 }
             }
         }
+
+        private void editStatement()
+        {
+            if (dataGridView1.SelectedRows.Count == 0)
+            {
+                MessageBox.Show("Select at least one row first.", "Edit Statement", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            var row = dataGridView1.SelectedRows.Cast<DataGridViewRow>().OrderBy(r => r.Index).First();
+            int rowIndex = row.Index;
+
+            string original = GetCell(rowIndex, ColumnKey.Command);
+
+            // Baştaki boşlukları veya tabları ayıkla
+            string indent = "";
+            int firstNonWhitespace = original.TakeWhile(c => c == ' ' || c == '\t').Count();
+            if (firstNonWhitespace > 0)
+                indent = original.Substring(0, firstNonWhitespace);
+
+            string trimmed = original.Substring(firstNonWhitespace);
+
+            string input = Microsoft.VisualBasic.Interaction.InputBox(
+                "Edit statement:",
+                "Edit Command",
+                trimmed
+            );
+
+            if (!string.IsNullOrWhiteSpace(input))
+            {
+                SetCell(rowIndex, ColumnKey.Command, indent + input);
+            }
+        }
+
+
+        private void IndentSelectedStatements(bool direction)
+        {
+            const string indent = "   "; // 3 boşluk
+            if (dataGridView1.SelectedRows.Count == 0) return;
+
+            foreach (var row in dataGridView1.SelectedRows.Cast<DataGridViewRow>())
+            {
+                int rowIndex = row.Index;
+                string command = GetCell(rowIndex, ColumnKey.Command);
+
+                if (direction) // İleri girinti
+                {
+                    SetCell(rowIndex, ColumnKey.Command, indent + command);
+                }
+                else // Geri girinti
+                {
+                    if (command.StartsWith(indent))
+                        SetCell(rowIndex, ColumnKey.Command, command.Substring(indent.Length));
+                    else if (command.StartsWith("\t")) // TAB karakteri varsa
+                        SetCell(rowIndex, ColumnKey.Command, command.Substring(1));
+                }
+            }
+        }
+
+        private void RemoveSelectedLines()
+        {
+            if (dataGridView1.SelectedRows.Count == 0)
+            {
+                MessageBox.Show("Silinecek satır seçilmedi.", "Uyarı", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            var result = MessageBox.Show(
+                $"Seçili {dataGridView1.SelectedRows.Count} satırı silmek istediğinize emin misiniz?",
+                "Satırları Sil",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Question
+            );
+
+            if (result != DialogResult.Yes)
+                return;
+
+            // Tersten sil, index kayması olmasın
+            foreach (var row in dataGridView1.SelectedRows.Cast<DataGridViewRow>().OrderByDescending(r => r.Index))
+            {
+                dataGridView1.Rows.RemoveAt(row.Index);
+            }
+        }
+
 
         private void changeGridSelection()
         {
@@ -980,9 +1098,14 @@ namespace FlowGen
                     return;
                 }
             }
+            var row = dataGridView1.SelectedRows.Cast<DataGridViewRow>().OrderBy(r => r.Index).First();
+            int rowInd = row.Index;
+
+            string current = GetCell(rowInd, ColumnKey.FunctionName);
+            
 
             string funcName = Microsoft.VisualBasic.Interaction.InputBox(
-                "Enter short function name/description:", "Tag range", "");
+                "Enter short function name/description:", "Tag range", current);
 
             if (string.IsNullOrWhiteSpace(funcName))
                 return;
@@ -1163,6 +1286,28 @@ namespace FlowGen
 
         }
 
+        private string SpacesToTabs(string input)
+        {
+            if (string.IsNullOrEmpty(input))
+                return input;
+
+            int spaceCount = 0;
+            int i = 0;
+
+            // Baştaki boşlukları say
+            while (i < input.Length && input[i] == ' ')
+            {
+                spaceCount++;
+                i++;
+            }
+
+            int tabCount = spaceCount / 3;
+            int leftover =  spaceCount % 3;
+
+            string prefix = new string('\t', tabCount);// + new string(' ', leftover);
+            return prefix + input.Substring(i);
+        }
+
 
         private void ExportToFile()
         {
@@ -1188,7 +1333,7 @@ namespace FlowGen
                 for (int i = 0; i < dataGridView1.Rows.Count; i++)
                 {
                     string lineNum = GetCell(i, ColumnKey.LineNumber).Trim();
-                    string command = GetCell(i, ColumnKey.Command).Trim();
+                    string command = SpacesToTabs(GetCell(i, ColumnKey.Command));
                     string flow = GetCell(i, ColumnKey.FlowMarker).Trim();
                     string func = GetCell(i, ColumnKey.FunctionName).Trim();
                     string comment = GetCell(i, ColumnKey.Comment).Trim();
