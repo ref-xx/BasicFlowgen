@@ -20,7 +20,7 @@ namespace FlowGen
             Comment         // el ile yazılmış yorumlar
         }
 
-        Dictionary<string, double> variableStore = new(); // global değişken listesi
+        Dictionary<string, object> variableStore = new();        // global değişken listesi
 
         private Dictionary<ColumnKey, int> ColumnMap;
         private void InitGridColumns()
@@ -90,22 +90,9 @@ namespace FlowGen
             //LineSplit("PICK_REF-XX.TXT");
             //AnalyzeJumps();
 
-            using (OpenFileDialog openFileDialog = new OpenFileDialog())
-            {
-                openFileDialog.Filter = "BASIC veya metin dosyaları (*.bas;*.txt;*.fgn)|*.bas;*.txt;*.fgn|Tüm dosyalar (*.*)|*.*";
-                openFileDialog.Title = "BASIC Dosyası Aç";
-
-                if (openFileDialog.ShowDialog() == DialogResult.OK)
-                {
-                    LineSplit(openFileDialog.FileName);
-                    AnalyzeJumps();
-                    AddSeparators();
-                    this.Text = "FlowGen - " + openFileDialog.SafeFileName;
-                    listBox2.Items.Clear();
-
-                }
-            }
         }
+
+
         private void listBox2_SelectedIndexChanged(object sender, EventArgs e)
         {
         }
@@ -117,6 +104,29 @@ namespace FlowGen
         }
 
 
+        private void ReListbyTags()
+        {
+            var sorted = dataGridView1.Rows
+            .Cast<DataGridViewRow>()
+            .OrderBy(r => (int)r.Tag)
+            .ToList();
+
+            dataGridView1.Rows.Clear();
+
+            foreach (var row in sorted)
+            {
+                dataGridView1.Rows.Add(row);
+            }
+
+        }
+
+        private void RepopulateTags()
+        {
+            for (int i = 0; i < dataGridView1.Rows.Count; i++)
+            {
+                dataGridView1.Rows[i].Tag = (double)(i + 1);
+            }
+        }
 
         private void JumpToLine(string lineNum, string statementIndex)
         {
@@ -149,12 +159,12 @@ namespace FlowGen
                 char c = input[index];
                 if (c == '\t') preservedTabs += c;
                 else if (!Char.IsWhiteSpace(c)) break;
-                
+
                 index++;
             }
 
             // Geriye kalan kısmı döndür, ama baştaki \t'leri koru
-           
+
             return preservedTabs + input.Trim();
         }
 
@@ -256,7 +266,7 @@ namespace FlowGen
                         {
                             statements.Add(TrimStartTab(current.ToString()));
                         }
-                            current.Clear();
+                        current.Clear();
                     }
                     else
                     {
@@ -279,7 +289,7 @@ namespace FlowGen
                     }
 
                     string command = match.Success ? match.Groups[2].Value : statements[0];
-                    command=TrimStartTab(command);
+                    command = TrimStartTab(command);
                     var row = AddGridRow(new Dictionary<ColumnKey, string>
                     {
                         { ColumnKey.FlowMarker, currentFlow },
@@ -813,7 +823,9 @@ namespace FlowGen
             if (!string.IsNullOrWhiteSpace(input))
             {
                 SetCell(rowIndex, ColumnKey.Command, indent + input);
+                SetChanged();
             }
+            
         }
 
 
@@ -839,6 +851,7 @@ namespace FlowGen
                         SetCell(rowIndex, ColumnKey.Command, command.Substring(1));
                 }
             }
+            SetChanged();
         }
 
         private void RemoveSelectedLines()
@@ -857,13 +870,17 @@ namespace FlowGen
             );
 
             if (result != DialogResult.Yes)
+            {
+                
                 return;
+            }
 
             // Tersten sil, index kayması olmasın
             foreach (var row in dataGridView1.SelectedRows.Cast<DataGridViewRow>().OrderByDescending(r => r.Index))
             {
                 dataGridView1.Rows.RemoveAt(row.Index);
             }
+            SetChanged();
         }
 
 
@@ -1102,7 +1119,7 @@ namespace FlowGen
             int rowInd = row.Index;
 
             string current = GetCell(rowInd, ColumnKey.FunctionName);
-            
+
 
             string funcName = Microsoft.VisualBasic.Interaction.InputBox(
                 "Enter short function name/description:", "Tag range", current);
@@ -1302,7 +1319,7 @@ namespace FlowGen
             }
 
             int tabCount = spaceCount / 3;
-            int leftover =  spaceCount % 3;
+            int leftover = spaceCount % 3;
 
             string prefix = new string('\t', tabCount);// + new string(' ', leftover);
             return prefix + input.Substring(i);
@@ -1438,7 +1455,7 @@ namespace FlowGen
             if (CheckChanged())
             {
                 var result = MessageBox.Show(
-                    "The file has been modified. Do you still want to close the window?",
+                    "The file has been modified. Do you still want to exit FlowGen?",
                     "Confirm Close",
                     MessageBoxButtons.YesNo,
                     MessageBoxIcon.Warning,
@@ -1537,7 +1554,9 @@ namespace FlowGen
 
             // Diğer komutlarda bir şey yapılmaz (şimdilik)
 
-            var assignMatch = Regex.Match(command, @"^([a-z][a-z0-9]*)\s*=\s*(.+)$", RegexOptions.IgnoreCase);
+            //var assignMatch = Regex.Match(command, @"^([a-z][a-z0-9]*)\s*=\s*(.+)$", RegexOptions.IgnoreCase);
+
+            var assignMatch = Regex.Match(command, @"^([a-z][a-z0-9\$]*)\s*=\s*(.+)$", RegexOptions.IgnoreCase);
             if (assignMatch.Success)
             {
                 string varName = assignMatch.Groups[1].Value.Trim();
@@ -1587,11 +1606,13 @@ namespace FlowGen
                 }
 
                 var result = evaluator.Evaluate();
-
                 if (result is double d)
                     variableStore[variable] = d;
                 else if (result is int i)
                     variableStore[variable] = i;
+                else if (result is string s)
+                    variableStore[variable] = s;
+
 
                 if (variableWindow == null) showVars();
                 UpdateVariableListBox();
@@ -1600,7 +1621,18 @@ namespace FlowGen
             }
             catch
             {
-                // ifade çözülemezse yok say
+                // ifade çözülemezse 
+                if (variable.Trim().EndsWith("$"))
+                {
+                    // Bu bir string değişken
+                    variableStore[variable] = expression.ToString();
+                }
+                else
+                {
+                    MessageBox.Show("Missing variables in expression:\r\nVar " + variable.ToString() + " = " + expression, "Evaluation Failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    variableStore[variable] = 0;
+                }
+
             }
         }
 
@@ -1637,10 +1669,12 @@ namespace FlowGen
             if (variableListBox == null) return;
 
             variableListBox.Items.Clear();
+
             foreach (var kvp in variableStore.OrderBy(k => k.Key))
             {
                 variableListBox.Items.Add($"{kvp.Key} = {kvp.Value}");
             }
+
         }
         private void VariableListBox_MouseUp(object sender, MouseEventArgs e)
         {
@@ -1656,6 +1690,50 @@ namespace FlowGen
         private void button7_Click(object sender, EventArgs e)
         {
             showVars();
+        }
+
+        private void openListingToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+
+            using (OpenFileDialog openFileDialog = new OpenFileDialog())
+            {
+                openFileDialog.Filter = "BASIC veya metin dosyaları (*.bas;*.txt;*.fgn)|*.bas;*.txt;*.fgn|Tüm dosyalar (*.*)|*.*";
+                openFileDialog.Title = "BASIC Dosyası Aç";
+
+                if (openFileDialog.ShowDialog() == DialogResult.OK)
+                {
+                    LineSplit(openFileDialog.FileName);
+                    AnalyzeJumps();
+                    AddSeparators();
+                    RepopulateTags();
+                    this.Text = "FlowGen - " + openFileDialog.SafeFileName;
+                    listBox2.Items.Clear();
+
+                }
+            }
+        }
+
+        private void saveFgnProjectToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            ExportToFile();
+            SetUnchanged();
+        }
+
+        private void saveListingToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            checkBox3.Checked = false;
+            ExportToText();
+        }
+
+        private void exportPlainBasicAsToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            checkBox3.Checked = true;
+            ExportToText();
+        }
+
+        private void exitToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            Application.Exit();
         }
     }
 }

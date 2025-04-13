@@ -30,7 +30,6 @@
         {
             components = new System.ComponentModel.Container();
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(Form1));
-            button1 = new Button();
             listBox2 = new ListBox();
             textBox1 = new TextBox();
             button2 = new Button();
@@ -60,32 +59,32 @@
             checkBox3 = new CheckBox();
             groupBox1 = new GroupBox();
             button4 = new Button();
-            dataGridView1 = new DataGridView();
             checkBox4 = new CheckBox();
+            dataGridView1 = new DataGridView();
             button5 = new Button();
             button6 = new Button();
             button7 = new Button();
+            menuStrip1 = new MenuStrip();
+            fileToolStripMenuItem = new ToolStripMenuItem();
+            openListingToolStripMenuItem = new ToolStripMenuItem();
+            saveFgnProjectToolStripMenuItem = new ToolStripMenuItem();
+            toolStripMenuItem10 = new ToolStripSeparator();
+            exportPlainBasicAsToolStripMenuItem = new ToolStripMenuItem();
+            saveListingToolStripMenuItem = new ToolStripMenuItem();
+            toolStripMenuItem9 = new ToolStripSeparator();
+            exitToolStripMenuItem = new ToolStripMenuItem();
             contextMenuStrip1.SuspendLayout();
             groupBox1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)dataGridView1).BeginInit();
+            menuStrip1.SuspendLayout();
             SuspendLayout();
-            // 
-            // button1
-            // 
-            button1.Location = new Point(12, 19);
-            button1.Name = "button1";
-            button1.Size = new Size(75, 23);
-            button1.TabIndex = 0;
-            button1.Text = "Open";
-            button1.UseVisualStyleBackColor = true;
-            button1.Click += button1_Click;
             // 
             // listBox2
             // 
             listBox2.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left;
             listBox2.FormattingEnabled = true;
             listBox2.ItemHeight = 15;
-            listBox2.Location = new Point(731, 8);
+            listBox2.Location = new Point(610, 27);
             listBox2.Name = "listBox2";
             listBox2.Size = new Size(75, 34);
             listBox2.TabIndex = 3;
@@ -93,7 +92,7 @@
             // 
             // textBox1
             // 
-            textBox1.Location = new Point(182, 19);
+            textBox1.Location = new Point(12, 27);
             textBox1.Name = "textBox1";
             textBox1.Size = new Size(160, 23);
             textBox1.TabIndex = 4;
@@ -102,7 +101,7 @@
             // 
             // button2
             // 
-            button2.Location = new Point(348, 19);
+            button2.Location = new Point(178, 27);
             button2.Name = "button2";
             button2.Size = new Size(75, 23);
             button2.TabIndex = 5;
@@ -113,7 +112,7 @@
             // checkBox1
             // 
             checkBox1.AutoSize = true;
-            checkBox1.Location = new Point(429, 21);
+            checkBox1.Location = new Point(259, 30);
             checkBox1.Name = "checkBox1";
             checkBox1.Size = new Size(77, 19);
             checkBox1.TabIndex = 6;
@@ -269,7 +268,7 @@
             // button3
             // 
             button3.Anchor = AnchorStyles.Top | AnchorStyles.Right;
-            button3.Location = new Point(275, 16);
+            button3.Location = new Point(646, 16);
             button3.Name = "button3";
             button3.Size = new Size(124, 23);
             button3.TabIndex = 8;
@@ -293,7 +292,7 @@
             // checkBox3
             // 
             checkBox3.AutoSize = true;
-            checkBox3.Location = new Point(6, 18);
+            checkBox3.Location = new Point(6, 23);
             checkBox3.Name = "checkBox3";
             checkBox3.Size = new Size(142, 19);
             checkBox3.TabIndex = 10;
@@ -307,16 +306,18 @@
             groupBox1.Controls.Add(checkBox3);
             groupBox1.Controls.Add(checkBox2);
             groupBox1.Controls.Add(button3);
-            groupBox1.Location = new Point(812, -3);
+            groupBox1.Controls.Add(checkBox4);
+            groupBox1.Location = new Point(27, 77);
             groupBox1.Name = "groupBox1";
-            groupBox1.Size = new Size(419, 45);
+            groupBox1.Size = new Size(790, 45);
             groupBox1.TabIndex = 11;
             groupBox1.TabStop = false;
+            groupBox1.Visible = false;
             // 
             // button4
             // 
             button4.Anchor = AnchorStyles.Top | AnchorStyles.Right;
-            button4.Location = new Point(145, 16);
+            button4.Location = new Point(516, 16);
             button4.Name = "button4";
             button4.Size = new Size(124, 23);
             button4.TabIndex = 11;
@@ -324,31 +325,31 @@
             button4.UseVisualStyleBackColor = true;
             button4.Click += button4_Click;
             // 
-            // dataGridView1
-            // 
-            dataGridView1.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
-            dataGridView1.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
-            dataGridView1.Location = new Point(12, 48);
-            dataGridView1.Name = "dataGridView1";
-            dataGridView1.Size = new Size(1219, 439);
-            dataGridView1.TabIndex = 13;
-            dataGridView1.MouseClick += dataGridView1_MouseClick;
-            // 
             // checkBox4
             // 
             checkBox4.AutoSize = true;
             checkBox4.Checked = true;
             checkBox4.CheckState = CheckState.Checked;
-            checkBox4.Location = new Point(93, 22);
+            checkBox4.Location = new Point(286, 18);
             checkBox4.Name = "checkBox4";
             checkBox4.Size = new Size(81, 19);
             checkBox4.TabIndex = 14;
             checkBox4.Text = "AutoColor";
             checkBox4.UseVisualStyleBackColor = true;
             // 
+            // dataGridView1
+            // 
+            dataGridView1.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
+            dataGridView1.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
+            dataGridView1.Location = new Point(12, 63);
+            dataGridView1.Name = "dataGridView1";
+            dataGridView1.Size = new Size(1219, 424);
+            dataGridView1.TabIndex = 13;
+            dataGridView1.MouseClick += dataGridView1_MouseClick;
+            // 
             // button5
             // 
-            button5.Location = new Point(569, 19);
+            button5.Location = new Point(442, 27);
             button5.Name = "button5";
             button5.Size = new Size(75, 23);
             button5.TabIndex = 15;
@@ -358,7 +359,7 @@
             // 
             // button6
             // 
-            button6.Location = new Point(650, 19);
+            button6.Location = new Point(523, 27);
             button6.Name = "button6";
             button6.Size = new Size(75, 23);
             button6.TabIndex = 16;
@@ -368,31 +369,92 @@
             // 
             // button7
             // 
-            button7.Location = new Point(512, 17);
+            button7.Location = new Point(361, 27);
             button7.Name = "button7";
-            button7.Size = new Size(51, 23);
+            button7.Size = new Size(75, 23);
             button7.TabIndex = 17;
             button7.Text = "Vars";
             button7.UseVisualStyleBackColor = true;
             button7.Click += button7_Click;
+            // 
+            // menuStrip1
+            // 
+            menuStrip1.Items.AddRange(new ToolStripItem[] { fileToolStripMenuItem });
+            menuStrip1.Location = new Point(0, 0);
+            menuStrip1.Name = "menuStrip1";
+            menuStrip1.Size = new Size(1243, 24);
+            menuStrip1.TabIndex = 18;
+            menuStrip1.Text = "menuStrip1";
+            // 
+            // fileToolStripMenuItem
+            // 
+            fileToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { openListingToolStripMenuItem, saveFgnProjectToolStripMenuItem, toolStripMenuItem10, exportPlainBasicAsToolStripMenuItem, saveListingToolStripMenuItem, toolStripMenuItem9, exitToolStripMenuItem });
+            fileToolStripMenuItem.Name = "fileToolStripMenuItem";
+            fileToolStripMenuItem.Size = new Size(37, 20);
+            fileToolStripMenuItem.Text = "File";
+            // 
+            // openListingToolStripMenuItem
+            // 
+            openListingToolStripMenuItem.Name = "openListingToolStripMenuItem";
+            openListingToolStripMenuItem.Size = new Size(204, 22);
+            openListingToolStripMenuItem.Text = "Open Project or Listing...";
+            openListingToolStripMenuItem.Click += openListingToolStripMenuItem_Click;
+            // 
+            // saveFgnProjectToolStripMenuItem
+            // 
+            saveFgnProjectToolStripMenuItem.Name = "saveFgnProjectToolStripMenuItem";
+            saveFgnProjectToolStripMenuItem.Size = new Size(204, 22);
+            saveFgnProjectToolStripMenuItem.Text = "Save Fgn Project as...";
+            saveFgnProjectToolStripMenuItem.Click += saveFgnProjectToolStripMenuItem_Click;
+            // 
+            // toolStripMenuItem10
+            // 
+            toolStripMenuItem10.Name = "toolStripMenuItem10";
+            toolStripMenuItem10.Size = new Size(201, 6);
+            // 
+            // exportPlainBasicAsToolStripMenuItem
+            // 
+            exportPlainBasicAsToolStripMenuItem.Name = "exportPlainBasicAsToolStripMenuItem";
+            exportPlainBasicAsToolStripMenuItem.Size = new Size(204, 22);
+            exportPlainBasicAsToolStripMenuItem.Text = "Export as Basic";
+            exportPlainBasicAsToolStripMenuItem.Click += exportPlainBasicAsToolStripMenuItem_Click;
+            // 
+            // saveListingToolStripMenuItem
+            // 
+            saveListingToolStripMenuItem.Name = "saveListingToolStripMenuItem";
+            saveListingToolStripMenuItem.Size = new Size(204, 22);
+            saveListingToolStripMenuItem.Text = "Export as Text";
+            saveListingToolStripMenuItem.Click += saveListingToolStripMenuItem_Click;
+            // 
+            // toolStripMenuItem9
+            // 
+            toolStripMenuItem9.Name = "toolStripMenuItem9";
+            toolStripMenuItem9.Size = new Size(201, 6);
+            // 
+            // exitToolStripMenuItem
+            // 
+            exitToolStripMenuItem.Name = "exitToolStripMenuItem";
+            exitToolStripMenuItem.Size = new Size(204, 22);
+            exitToolStripMenuItem.Text = "Exit";
+            exitToolStripMenuItem.Click += exitToolStripMenuItem_Click;
             // 
             // Form1
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(1243, 499);
+            Controls.Add(groupBox1);
+            Controls.Add(menuStrip1);
             Controls.Add(button7);
             Controls.Add(button6);
             Controls.Add(button5);
-            Controls.Add(checkBox4);
             Controls.Add(dataGridView1);
-            Controls.Add(groupBox1);
             Controls.Add(checkBox1);
             Controls.Add(button2);
             Controls.Add(textBox1);
             Controls.Add(listBox2);
-            Controls.Add(button1);
             Icon = (Icon)resources.GetObject("$this.Icon");
+            MainMenuStrip = menuStrip1;
             Name = "Form1";
             Text = "FlowGen";
             FormClosing += Form1_FormClosing;
@@ -400,13 +462,13 @@
             groupBox1.ResumeLayout(false);
             groupBox1.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)dataGridView1).EndInit();
+            menuStrip1.ResumeLayout(false);
+            menuStrip1.PerformLayout();
             ResumeLayout(false);
             PerformLayout();
         }
 
         #endregion
-
-        private Button button1;
         private ListBox listBox2;
         private TextBox textBox1;
         private Button button2;
@@ -441,5 +503,14 @@
         private ToolStripMenuItem toolStripMenuItem7;
         private ToolStripMenuItem toolStripMenuItem6;
         private ToolStripMenuItem toolStripMenuItem8;
+        private MenuStrip menuStrip1;
+        private ToolStripMenuItem fileToolStripMenuItem;
+        private ToolStripMenuItem openListingToolStripMenuItem;
+        private ToolStripMenuItem saveFgnProjectToolStripMenuItem;
+        private ToolStripMenuItem saveListingToolStripMenuItem;
+        private ToolStripSeparator toolStripMenuItem9;
+        private ToolStripMenuItem exitToolStripMenuItem;
+        private ToolStripSeparator toolStripMenuItem10;
+        private ToolStripMenuItem exportPlainBasicAsToolStripMenuItem;
     }
 }
