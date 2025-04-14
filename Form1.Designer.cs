@@ -37,6 +37,10 @@
             contextMenuStrip1 = new ContextMenuStrip(components);
             pickColorToolStripMenuItem = new ToolStripMenuItem();
             addDescriptionToolStripMenuItem = new ToolStripMenuItem();
+            clearGroupMarksToolStripMenuItem = new ToolStripMenuItem();
+            groupingMarkersToolStripMenuItem = new ToolStripMenuItem();
+            functionDescriptionToolStripMenuItem = new ToolStripMenuItem();
+            commentsToolStripMenuItem = new ToolStripMenuItem();
             toolStripMenuItem5 = new ToolStripSeparator();
             addRemoveLinesToolStripMenuItem = new ToolStripMenuItem();
             addEmptyLineToolStripMenuItem = new ToolStripMenuItem();
@@ -73,6 +77,9 @@
             saveListingToolStripMenuItem = new ToolStripMenuItem();
             toolStripMenuItem9 = new ToolStripSeparator();
             exitToolStripMenuItem = new ToolStripMenuItem();
+            viewToolStripMenuItem = new ToolStripMenuItem();
+            toolStripMenuItem11 = new ToolStripMenuItem();
+            toolStripMenuItem12 = new ToolStripMenuItem();
             contextMenuStrip1.SuspendLayout();
             groupBox1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)dataGridView1).BeginInit();
@@ -121,9 +128,9 @@
             // 
             // contextMenuStrip1
             // 
-            contextMenuStrip1.Items.AddRange(new ToolStripItem[] { pickColorToolStripMenuItem, addDescriptionToolStripMenuItem, toolStripMenuItem5, addRemoveLinesToolStripMenuItem, toolStripMenuItem4, statementsToolStripMenuItem, toolStripMenuItem2, copyToolStripMenuItem, pasteToolStripMenuItem, cutToolStripMenuItem, toolStripMenuItem1, exportToolStripMenuItem, toolStripMenuItem3, followGotoToolStripMenuItem });
+            contextMenuStrip1.Items.AddRange(new ToolStripItem[] { pickColorToolStripMenuItem, addDescriptionToolStripMenuItem, clearGroupMarksToolStripMenuItem, toolStripMenuItem5, addRemoveLinesToolStripMenuItem, toolStripMenuItem4, statementsToolStripMenuItem, toolStripMenuItem2, copyToolStripMenuItem, pasteToolStripMenuItem, cutToolStripMenuItem, toolStripMenuItem1, exportToolStripMenuItem, toolStripMenuItem3, followGotoToolStripMenuItem });
             contextMenuStrip1.Name = "contextMenuStrip1";
-            contextMenuStrip1.Size = new Size(210, 232);
+            contextMenuStrip1.Size = new Size(210, 254);
             contextMenuStrip1.Tag = "12";
             contextMenuStrip1.Text = "Indent";
             contextMenuStrip1.Opening += contextMenuStrip1_Opening;
@@ -143,6 +150,38 @@
             addDescriptionToolStripMenuItem.Tag = "7";
             addDescriptionToolStripMenuItem.Text = "Add Function Description";
             addDescriptionToolStripMenuItem.Click += GeneralMenuItem_Click;
+            // 
+            // clearGroupMarksToolStripMenuItem
+            // 
+            clearGroupMarksToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { groupingMarkersToolStripMenuItem, functionDescriptionToolStripMenuItem, commentsToolStripMenuItem });
+            clearGroupMarksToolStripMenuItem.Name = "clearGroupMarksToolStripMenuItem";
+            clearGroupMarksToolStripMenuItem.Size = new Size(209, 22);
+            clearGroupMarksToolStripMenuItem.Tag = "";
+            clearGroupMarksToolStripMenuItem.Text = "Clear Cells";
+            // 
+            // groupingMarkersToolStripMenuItem
+            // 
+            groupingMarkersToolStripMenuItem.Name = "groupingMarkersToolStripMenuItem";
+            groupingMarkersToolStripMenuItem.Size = new Size(184, 22);
+            groupingMarkersToolStripMenuItem.Tag = "15";
+            groupingMarkersToolStripMenuItem.Text = "Grouping Markers";
+            groupingMarkersToolStripMenuItem.Click += GeneralMenuItem_Click;
+            // 
+            // functionDescriptionToolStripMenuItem
+            // 
+            functionDescriptionToolStripMenuItem.Name = "functionDescriptionToolStripMenuItem";
+            functionDescriptionToolStripMenuItem.Size = new Size(184, 22);
+            functionDescriptionToolStripMenuItem.Tag = "16";
+            functionDescriptionToolStripMenuItem.Text = "Function Description";
+            functionDescriptionToolStripMenuItem.Click += GeneralMenuItem_Click;
+            // 
+            // commentsToolStripMenuItem
+            // 
+            commentsToolStripMenuItem.Name = "commentsToolStripMenuItem";
+            commentsToolStripMenuItem.Size = new Size(184, 22);
+            commentsToolStripMenuItem.Tag = "17";
+            commentsToolStripMenuItem.Text = "Comments";
+            commentsToolStripMenuItem.Click += GeneralMenuItem_Click;
             // 
             // toolStripMenuItem5
             // 
@@ -379,7 +418,7 @@
             // 
             // menuStrip1
             // 
-            menuStrip1.Items.AddRange(new ToolStripItem[] { fileToolStripMenuItem });
+            menuStrip1.Items.AddRange(new ToolStripItem[] { fileToolStripMenuItem, viewToolStripMenuItem });
             menuStrip1.Location = new Point(0, 0);
             menuStrip1.Name = "menuStrip1";
             menuStrip1.Size = new Size(1243, 24);
@@ -437,6 +476,27 @@
             exitToolStripMenuItem.Size = new Size(204, 22);
             exitToolStripMenuItem.Text = "Exit";
             exitToolStripMenuItem.Click += exitToolStripMenuItem_Click;
+            // 
+            // viewToolStripMenuItem
+            // 
+            viewToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { toolStripMenuItem11, toolStripMenuItem12 });
+            viewToolStripMenuItem.Name = "viewToolStripMenuItem";
+            viewToolStripMenuItem.Size = new Size(44, 20);
+            viewToolStripMenuItem.Text = "View";
+            // 
+            // toolStripMenuItem11
+            // 
+            toolStripMenuItem11.Name = "toolStripMenuItem11";
+            toolStripMenuItem11.Size = new Size(180, 22);
+            toolStripMenuItem11.Text = "Variables";
+            toolStripMenuItem11.Click += toolStripMenuItem11_Click;
+            // 
+            // toolStripMenuItem12
+            // 
+            toolStripMenuItem12.Name = "toolStripMenuItem12";
+            toolStripMenuItem12.Size = new Size(180, 22);
+            toolStripMenuItem12.Text = "Modified Memory";
+            toolStripMenuItem12.Click += toolStripMenuItem12_Click;
             // 
             // Form1
             // 
@@ -512,5 +572,12 @@
         private ToolStripMenuItem exitToolStripMenuItem;
         private ToolStripSeparator toolStripMenuItem10;
         private ToolStripMenuItem exportPlainBasicAsToolStripMenuItem;
+        private ToolStripMenuItem clearGroupMarksToolStripMenuItem;
+        private ToolStripMenuItem groupingMarkersToolStripMenuItem;
+        private ToolStripMenuItem functionDescriptionToolStripMenuItem;
+        private ToolStripMenuItem commentsToolStripMenuItem;
+        private ToolStripMenuItem viewToolStripMenuItem;
+        private ToolStripMenuItem toolStripMenuItem11;
+        private ToolStripMenuItem toolStripMenuItem12;
     }
 }

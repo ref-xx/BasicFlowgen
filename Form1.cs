@@ -1,4 +1,6 @@
-﻿using System.Data;
+﻿using System;
+using System.Data;
+using System.Linq.Expressions;
 using System.Security.Cryptography.Xml;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -22,7 +24,55 @@ namespace FlowGen
 
         Dictionary<string, object> variableStore = new();        // global değişken listesi
 
+        Dictionary<int, byte> pokeMemory = new();
+
+
         private Dictionary<ColumnKey, int> ColumnMap;
+
+
+
+        private void RegisterCustomFunctions(NCalc.Expression expr)
+        {
+            expr.EvaluateFunction += (name, args) =>
+            {
+                if (name.ToLower() == "peek")
+                {
+                    if (args.Parameters.Length == 1)
+                    {
+                        object addrRaw = args.Parameters[0].Evaluate();
+                        if (addrRaw is int address && pokeMemory.ContainsKey(address))
+                        {
+                            args.Result = (int)pokeMemory[address];
+                            return;
+                        }
+                        args.Result = 0;
+                    }
+                }
+
+                if (name.ToLower() == "rnd")
+                {
+                    if (args.Parameters.Length == 1 && args.Parameters[0].Evaluate().ToString() == "0")
+                    {
+                        args.Result = 0.5;
+                    }
+                }
+
+                if (name.ToLower() == "int")
+                {
+                    if (args.Parameters.Length == 1)
+                    {
+                        object val = args.Parameters[0].Evaluate();
+                        if (val is double d)
+                            args.Result = (int)d;
+                        else if (val is int i)
+                            args.Result = i;
+                    }
+                }
+
+            };
+        }
+
+
         private void InitGridColumns()
         {
             dataGridView1.Columns.Clear();
@@ -196,6 +246,36 @@ namespace FlowGen
                 if (line.StartsWith("#"))
                 {
                     string meta = line.Substring(1);
+
+
+                    // Variables (örnek: #VAR X = 200)
+                    if (meta.StartsWith("VAR "))
+                    {
+                        var parts = meta.Substring(4).Split('=');
+                        if (parts.Length == 2)
+                        {
+                            string name = parts[0].Trim();
+                            string valueStr = parts[1].Trim();
+
+                            if (double.TryParse(valueStr, out double val))
+                                variableStore[name] = val;
+                            else
+                                variableStore[name] = valueStr; // string değer olabilir (örneğin N$ = hello)
+                        }
+                    }
+
+                    // Poke memory (örnek: #POKE 54272 = 129)
+                    else if (meta.StartsWith("POKE "))
+                    {
+                        var parts = meta.Substring(5).Split('=');
+                        if (parts.Length == 2 &&
+                            int.TryParse(parts[0].Trim(), out int address) &&
+                            byte.TryParse(parts[1].Trim(), out byte value))
+                        {
+                            pokeMemory[address] = value;
+                        }
+                    }
+
 
                     // Renk
                     var colorMatch = Regex.Match(meta, @"0x([0-9A-Fa-f]{6})");
@@ -776,7 +856,7 @@ namespace FlowGen
                         changeGridSelection();
                         break;
 
-                    case 12: // remove lines
+                    case 11: // remove lines
                         RemoveSelectedLines();
                         break;
 
@@ -786,6 +866,20 @@ namespace FlowGen
                     case 14: //un-indent
                         IndentSelectedStatements(false);
                         break;
+
+                    case 15: // clear flow
+                        ClearFlow(ColumnKey.FlowMarker);
+                        break;
+
+                    case 16: // clear function desc
+                        ClearFlow(ColumnKey.FunctionName);
+                        break;
+
+                    case 17: // clear comments
+                        ClearFlow(ColumnKey.Comment);
+                        break;
+
+
                     default:
                         MessageBox.Show("Unknown Selection");
                         break;
@@ -793,6 +887,18 @@ namespace FlowGen
             }
         }
 
+
+        private void ClearFlow(ColumnKey Key)
+        {
+            if (dataGridView1.SelectedRows.Count == 0) return;
+
+            foreach (var row in dataGridView1.SelectedRows.Cast<DataGridViewRow>())
+            {
+                int rowIndex = row.Index;
+                SetCell(rowIndex, Key, "");
+            }
+            SetChanged();
+        }
         private void editStatement()
         {
             if (dataGridView1.SelectedRows.Count == 0)
@@ -825,7 +931,7 @@ namespace FlowGen
                 SetCell(rowIndex, ColumnKey.Command, indent + input);
                 SetChanged();
             }
-            
+
         }
 
 
@@ -871,7 +977,7 @@ namespace FlowGen
 
             if (result != DialogResult.Yes)
             {
-                
+
                 return;
             }
 
@@ -1409,6 +1515,28 @@ namespace FlowGen
                 }
             }
 
+
+            // --- VARİABLES DUMP ---
+            if (variableStore.Count > 0)
+            {
+                output.Add("#VARIABLES");
+                foreach (var kvp in variableStore.OrderBy(k => k.Key))
+                {
+                    output.Add($"#VAR {kvp.Key} = {kvp.Value}");
+                }
+            }
+
+            // --- POKE MEMORY DUMP ---
+            if (pokeMemory.Count > 0)
+            {
+                output.Add("#POKEMEMORY");
+                foreach (var kvp in pokeMemory.OrderBy(k => k.Key))
+                {
+                    output.Add($"#POKE {kvp.Key} = {kvp.Value}");
+                }
+            }
+
+
             File.WriteAllLines(sfd.FileName, output);
             MessageBox.Show("Exported.", "Yeah!", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
@@ -1483,6 +1611,8 @@ namespace FlowGen
             if (insertIndex >= 0) Step(insertIndex);
         }
 
+
+
         private void Step(int index)
         {
             if (index < 0 || index >= dataGridView1.Rows.Count)
@@ -1554,7 +1684,24 @@ namespace FlowGen
 
             // Diğer komutlarda bir şey yapılmaz (şimdilik)
 
-            //var assignMatch = Regex.Match(command, @"^([a-z][a-z0-9]*)\s*=\s*(.+)$", RegexOptions.IgnoreCase);
+            // POKE işlemi
+            var pokeMatch = Regex.Match(command, @"^poke\s+(.+?),\s*(.+)$", RegexOptions.IgnoreCase);
+            if (pokeMatch.Success)
+            {
+                string addrExpr = pokeMatch.Groups[1].Value.Trim();
+                string valExpr = pokeMatch.Groups[2].Value.Trim();
+                cmdPoke(addrExpr, valExpr);
+            }
+
+            // FOR i = x TO y → i = x gibi işlenir
+            var forMatch = Regex.Match(command, @"^for\s+([a-z][a-z0-9\$]*)\s*=\s*([^ ]+)\s+to\s+.+$", RegexOptions.IgnoreCase);
+            if (forMatch.Success)
+            {
+                string varName = forMatch.Groups[1].Value.Trim();
+                string expr = forMatch.Groups[2].Value.Trim();
+                cmdLet(varName, expr);
+            }
+
 
             var assignMatch = Regex.Match(command, @"^([a-z][a-z0-9\$]*)\s*=\s*(.+)$", RegexOptions.IgnoreCase);
             if (assignMatch.Success)
@@ -1592,12 +1739,52 @@ namespace FlowGen
             }
         }
 
+        private void cmdPoke(string addressExpr, string valueExpr)
+        {
+            try
+            {
+                
+                
+
+                var eval = new NCalc.Expression(addressExpr);
+                RegisterCustomFunctions(eval);
+                foreach (var kvp in variableStore)
+                    eval.Parameters[kvp.Key] = kvp.Value;
+
+                object addrResult = eval.Evaluate();
+                if (!(addrResult is int address)) return;
+
+                var evalVal = new NCalc.Expression(valueExpr);
+                RegisterCustomFunctions(evalVal);
+                foreach (var kvp in variableStore)
+                    evalVal.Parameters[kvp.Key] = kvp.Value;
+
+                object valueResult = evalVal.Evaluate();
+                int value = Convert.ToInt32(valueResult);
+                if (value < 0) value = 0;
+                if (value > 255) value = 255;
+
+                pokeMemory[address] = (byte)value;
+
+                if (memoryWindow == null) showMemory();
+                UpdateMemoryListBox();
+            }
+            catch
+            {
+                // geçersiz ifadeler yok sayılır
+                MessageBox.Show("Missing variables in expression:\r\nVar " + addressExpr.ToString() + " = " + valueExpr.ToString(), "Poke Evaluation Failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                
+            }
+        }
+
 
         private void cmdLet(string variable, string expression)
         {
             try
             {
                 var evaluator = new NCalc.Expression(expression);
+                RegisterCustomFunctions(evaluator);
+
 
                 // NCalc'a mevcut değişkenleri tanıt
                 foreach (var kvp in variableStore)
@@ -1612,6 +1799,18 @@ namespace FlowGen
                     variableStore[variable] = i;
                 else if (result is string s)
                     variableStore[variable] = s;
+
+                if (variable.Length > 2)
+                {
+                    variable = variable.Substring(0, 2);
+
+                    if (result is double dd)
+                        variableStore[variable] = dd;
+                    else if (result is int i)
+                        variableStore[variable] = i;
+                    else if (result is string s)
+                        variableStore[variable] = s;
+                }
 
 
                 if (variableWindow == null) showVars();
@@ -1638,6 +1837,48 @@ namespace FlowGen
 
         private Form variableWindow = null;
         private ListBox variableListBox = null;
+        private Form memoryWindow = null;
+        private ListBox memoryListBox = null;
+
+
+        private void showMemory()
+        {
+            if (memoryWindow == null || memoryWindow.IsDisposed)
+            {
+                memoryWindow = new Form
+                {
+                    Text = "POKE Memory",
+                    Width = 300,
+                    Height = 400,
+                    TopMost = true
+                };
+
+                memoryListBox = new ListBox
+                {
+                    Dock = DockStyle.Fill,
+                    Font = new Font("Consolas", 10)
+                };
+
+                memoryWindow.Controls.Add(memoryListBox);
+            }
+
+            UpdateMemoryListBox();
+            memoryWindow.Show();
+            memoryWindow.BringToFront();
+        }
+
+        private void UpdateMemoryListBox()
+        {
+            if (memoryListBox == null) return;
+
+            memoryListBox.Items.Clear();
+            foreach (var kvp in pokeMemory.OrderBy(k => k.Key))
+            {
+                memoryListBox.Items.Add($"{kvp.Key} = {kvp.Value}");
+            }
+        }
+
+
         private void showVars()
         {
             if (variableWindow == null || variableWindow.IsDisposed)
@@ -1646,7 +1887,8 @@ namespace FlowGen
                 {
                     Text = "Variables",
                     Width = 300,
-                    Height = 400
+                    Height = 400,
+                    TopMost = true
                 };
 
                 variableListBox = new ListBox
@@ -1734,6 +1976,16 @@ namespace FlowGen
         private void exitToolStripMenuItem_Click(object sender, EventArgs e)
         {
             Application.Exit();
+        }
+
+        private void toolStripMenuItem11_Click(object sender, EventArgs e)
+        {
+            showVars();
+        }
+
+        private void toolStripMenuItem12_Click(object sender, EventArgs e)
+        {
+            showMemory();
         }
     }
 }
