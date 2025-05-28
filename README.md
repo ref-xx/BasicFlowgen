@@ -7,3 +7,4 @@ To view flowgen generated fgn files just download binaries from releases
 for example flowgen files
 see. https://github.com/ref-xx/PiratesZX
 
+![Flowgen v0.3](flowgen3.png)
