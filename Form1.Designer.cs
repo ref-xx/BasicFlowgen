@@ -487,14 +487,14 @@
             // toolStripMenuItem11
             // 
             toolStripMenuItem11.Name = "toolStripMenuItem11";
-            toolStripMenuItem11.Size = new Size(180, 22);
+            toolStripMenuItem11.Size = new Size(170, 22);
             toolStripMenuItem11.Text = "Variables";
             toolStripMenuItem11.Click += toolStripMenuItem11_Click;
             // 
             // toolStripMenuItem12
             // 
             toolStripMenuItem12.Name = "toolStripMenuItem12";
-            toolStripMenuItem12.Size = new Size(180, 22);
+            toolStripMenuItem12.Size = new Size(170, 22);
             toolStripMenuItem12.Text = "Modified Memory";
             toolStripMenuItem12.Click += toolStripMenuItem12_Click;
             // 
@@ -516,7 +516,7 @@
             Icon = (Icon)resources.GetObject("$this.Icon");
             MainMenuStrip = menuStrip1;
             Name = "Form1";
-            Text = "FlowGen";
+            Text = "FlowGen 0.3";
             FormClosing += Form1_FormClosing;
             contextMenuStrip1.ResumeLayout(false);
             groupBox1.ResumeLayout(false);
